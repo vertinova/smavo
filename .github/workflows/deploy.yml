@@ -1,0 +1,46 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            set -e
+
+            APP_DIR="/opt/smavo"
+
+            # Clone jika belum ada, pull jika sudah ada
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone https://github.com/vertinova/smavo.git $APP_DIR
+            else
+              cd $APP_DIR
+              git pull origin main
+            fi
+
+            cd $APP_DIR
+
+            # Pastikan .env ada
+            if [ ! -f ".env" ]; then
+              echo "ERROR: File .env tidak ditemukan di $APP_DIR"
+              echo "Buat dulu: cp .env.example .env && nano .env"
+              exit 1
+            fi
+
+            # Build & restart containers
+            docker compose down --remove-orphans
+            docker compose build --no-cache
+            docker compose up -d
+
+            echo "Deploy selesai! https://smavo.vertinova.id"
