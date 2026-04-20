@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smavo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smavo_db
+      POSTGRES_USER: smavo
+      POSTGRES_PASSWORD: smavo_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U smavo -d smavo_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: smavo-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://smavo:smavo_password@postgres:5432/smavo_db?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-a-random-64-char-string}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-too-in-production-use-a-random-64-char-string}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      PORT: 4000
+      NODE_ENV: production
+    ports:
+      - '4000:4000'
+    volumes:
+      - uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: smavo-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    ports:
+      - '3000:3000'
+
+volumes:
+  pgdata:
+  uploads:
