@@ -2,8 +2,8 @@ FROM node:20-alpine AS base
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY prisma ./prisma
 RUN npx prisma generate
