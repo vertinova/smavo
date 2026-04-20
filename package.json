@@ -1,0 +1,22 @@
+{
+  "name": "smavo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SMAVO - School Management & Administration System for SMAN 2 Cibinong",
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "build:backend": "npm run build --workspace=apps/backend",
+    "build:frontend": "npm run build --workspace=apps/frontend",
+    "db:generate": "npm run db:generate --workspace=apps/backend",
+    "db:migrate": "npm run db:migrate --workspace=apps/backend",
+    "db:seed": "npm run db:seed --workspace=apps/backend"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

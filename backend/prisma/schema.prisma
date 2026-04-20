@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ──────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  BENDAHARA
+  GURU
+  STAF_TU
+}
+
+enum KIBType {
+  KIB_B // Equipment / Peralatan dan Mesin
+  KIB_E // Books & Arts / Aset Tetap Lainnya
+}
+
+enum AssetCondition {
+  BAIK       // Good
+  RUSAK_RINGAN // Light Damage
+  RUSAK_BERAT  // Heavy Damage
+}
+
+enum FundSource {
+  BOS_REGULER
+  BOS_KINERJA
+  BOS_AFIRMASI
+  APBD
+  KOMITE
+  LAINNYA
+}
+
+enum BOSComponent {
+  HONORARIUM
+  PEMELIHARAAN       // Maintenance
+  ATK                // Office Supplies
+  BAHAN_HABIS_PAKAI  // Consumables
+  DAYA_JASA          // Utilities
+  PERJALANAN_DINAS   // Official Travel
+  PENGEMBANGAN_GTK   // Teacher Development
+  KEGIATAN_SISWA     // Student Activities
+  LANGGANAN          // Subscriptions
+  LAINNYA
+}
+
+enum TaxType {
+  PPN   // 11% VAT
+  PPH21 // Income Tax Art 21
+  PPH22 // Income Tax Art 22
+  PPH23 // Income Tax Art 23
+  NONE
+}
+
+enum ExpenseStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LoanStatus {
+  DIPINJAM   // Borrowed
+  DIKEMBALIKAN // Returned
+  TERLAMBAT  // Overdue
+}
+
+enum AttendanceStatus {
+  HADIR
+  SAKIT
+  IZIN
+  ALPHA
+  TERLAMBAT
+}
+
+enum Gender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum LetterType {
+  SURAT_TUGAS
+  SURAT_KETERANGAN_AKTIF
+  SURAT_KETERANGAN_PINDAH
+  SURAT_KETERANGAN_LULUS
+  SURAT_IZIN
+  LAINNYA
+}
+
+// ─── AUTH & USER ────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  role          Role     @default(STAF_TU)
+  isActive      Boolean  @default(true)
+  refreshToken  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  profile       Profile?
+  expenses      Expense[]
+  assetLoans    AssetLoan[]
+  letters       Letter[]
+
+  @@map("users")
+}
+
+model Profile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  fullName    String
+  nip         String? @unique // Nomor Induk Pegawai
+  phone       String?
+  address     String?
+  avatarUrl   String?
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+// ─── ASSET MANAGEMENT (KIB) ────────────────────────────
+
+model Asset {
+  id              String         @id @default(cuid())
+  code            String         @unique // NIPD / Kode Barang
+  name            String
+  kibType         KIBType
+  brand           String?
+  specification   String?
+  acquisitionDate DateTime?
+  acquisitionCost Decimal?       @db.Decimal(15, 2)
+  fundSource      FundSource
+  budgetYear      Int
+  location        String
+  condition       AssetCondition @default(BAIK)
+  quantity        Int            @default(1)
+  unit            String         @default("unit") // unit, buah, set, etc.
+  notes           String?
+  qrCodeUrl       String?
+  photoUrl        String?
+  isDeleted       Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  maintenanceLogs MaintenanceLog[]
+  loans           AssetLoan[]
+
+  @@index([kibType])
+  @@index([fundSource])
+  @@index([budgetYear])
+  @@map("assets")
+}
+
+model MaintenanceLog {
+  id          String   @id @default(cuid())
+  assetId     String
+  date        DateTime
+  description String
+  cost        Decimal? @db.Decimal(15, 2)
+  vendor      String?
+  createdAt   DateTime @default(now())
+
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_logs")
+}
+
+model AssetLoan {
+  id          String     @id @default(cuid())
+  assetId     String
+  borrowerId  String
+  borrowDate  DateTime   @default(now())
+  dueDate     DateTime
+  returnDate  DateTime?
+  status      LoanStatus @default(DIPINJAM)
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  asset       Asset      @relation(fields: [assetId], references: [id])
+  borrower    User       @relation(fields: [borrowerId], references: [id])
+
+  @@map("asset_loans")
+}
+
+// ─── BOS FINANCE ────────────────────────────────────────
+
+model RKAS {
+  id            String       @id @default(cuid())
+  fiscalYear    Int
+  title         String
+  totalBudget   Decimal      @db.Decimal(15, 2)
+  approvedAt    DateTime?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  items         RKASItem[]
+
+  @@unique([fiscalYear])
+  @@map("rkas")
+}
+
+model RKASItem {
+  id            String       @id @default(cuid())
+  rkasId        String
+  component     BOSComponent
+  description   String
+  budgetAmount  Decimal      @db.Decimal(15, 2)
+  spentAmount   Decimal      @default(0) @db.Decimal(15, 2)
+
+  rkas          RKAS         @relation(fields: [rkasId], references: [id], onDelete: Cascade)
+  expenses      Expense[]
+
+  @@map("rkas_items")
+}
+
+model Expense {
+  id              String        @id @default(cuid())
+  rkasItemId      String?
+  invoiceNumber   String?       @unique
+  description     String
+  amount          Decimal       @db.Decimal(15, 2)
+  taxType         TaxType       @default(NONE)
+  taxAmount       Decimal       @default(0) @db.Decimal(15, 2)
+  totalAmount     Decimal       @db.Decimal(15, 2) // amount + taxAmount
+  component       BOSComponent
+  fundSource      FundSource
+  transactionDate DateTime
+  vendor          String?
+  receiptUrl      String?       // Digital archive path
+  status          ExpenseStatus @default(DRAFT)
+  createdById     String
+  approvedAt      DateTime?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  rkasItem        RKASItem?     @relation(fields: [rkasItemId], references: [id])
+  createdBy       User          @relation(fields: [createdById], references: [id])
+  attachments     ExpenseAttachment[]
+
+  @@index([component])
+  @@index([fundSource])
+  @@index([transactionDate])
+  @@map("expenses")
+}
+
+model ExpenseAttachment {
+  id         String   @id @default(cuid())
+  expenseId  String
+  fileName   String
+  fileUrl    String
+  fileType   String
+  createdAt  DateTime @default(now())
+
+  expense    Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@map("expense_attachments")
+}
+
+// ─── SCHOOL ADMINISTRATION ──────────────────────────────
+
+model Student {
+  id           String    @id @default(cuid())
+  nisn         String    @unique // Nomor Induk Siswa Nasional
+  nis          String?   @unique // Nomor Induk Sekolah
+  fullName     String
+  gender       Gender
+  birthPlace   String?
+  birthDate    DateTime?
+  religion     String?
+  address      String?
+  phone        String?
+  parentName   String?
+  parentPhone  String?
+  classId      String?
+  entryYear    Int
+  isActive     Boolean   @default(true)
+  photoUrl     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  class        Class?    @relation(fields: [classId], references: [id])
+  attendances  StudentAttendance[]
+
+  @@index([classId])
+  @@map("students")
+}
+
+model Teacher {
+  id           String    @id @default(cuid())
+  nip          String?   @unique // Nomor Induk Pegawai
+  nuptk        String?   @unique // Nomor Unik Pendidik dan Tenaga Kependidikan
+  fullName     String
+  gender       Gender
+  birthPlace   String?
+  birthDate    DateTime?
+  subject      String?   // Mata Pelajaran
+  phone        String?
+  email        String?
+  address      String?
+  isActive     Boolean   @default(true)
+  photoUrl     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  homeroomOf   Class?    @relation("HomeRoom")
+  attendances  StaffAttendance[]
+
+  @@map("teachers")
+}
+
+model Class {
+  id           String    @id @default(cuid())
+  name         String    // e.g., "X-MIPA-1"
+  grade        Int       // 10, 11, 12
+  academicYear String    // e.g., "2025/2026"
+  homeroomId   String?   @unique
+  capacity     Int       @default(36)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  homeroom     Teacher?  @relation("HomeRoom", fields: [homeroomId], references: [id])
+  students     Student[]
+
+  @@unique([name, academicYear])
+  @@map("classes")
+}
+
+model StudentAttendance {
+  id         String           @id @default(cuid())
+  studentId  String
+  date       DateTime
+  status     AttendanceStatus
+  notes      String?
+  createdAt  DateTime         @default(now())
+
+  student    Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@map("student_attendances")
+}
+
+model StaffAttendance {
+  id         String           @id @default(cuid())
+  teacherId  String
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     AttendanceStatus
+  notes      String?
+  createdAt  DateTime         @default(now())
+
+  teacher    Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, date])
+  @@map("staff_attendances")
+}
+
+model Letter {
+  id          String     @id @default(cuid())
+  letterType  LetterType
+  number      String     @unique // Nomor surat
+  subject     String
+  content     String     @db.Text
+  data        Json?      // Dynamic template data
+  issuedDate  DateTime
+  issuedById  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  issuedBy    User       @relation(fields: [issuedById], references: [id])
+
+  @@index([letterType])
+  @@map("letters")
+}
