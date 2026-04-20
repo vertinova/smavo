@@ -62,7 +62,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const asset = await prisma.asset.findUnique({
-      where: { id: req.params.id, isDeleted: false },
+      where: { id: req.params.id as string, isDeleted: false },
       include: {
         maintenanceLogs: { orderBy: { date: 'desc' }, take: 10 },
         loans: {
@@ -112,7 +112,7 @@ router.patch(
   validate(updateAssetSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.asset.findUnique({ where: { id: req.params.id, isDeleted: false } });
+      const existing = await prisma.asset.findUnique({ where: { id: req.params.id as string, isDeleted: false } });
       if (!existing) throw new NotFoundError('Aset');
 
       const asset = await prisma.asset.update({
@@ -133,7 +133,7 @@ router.delete(
   authorize('ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.asset.findUnique({ where: { id: req.params.id, isDeleted: false } });
+      const existing = await prisma.asset.findUnique({ where: { id: req.params.id as string, isDeleted: false } });
       if (!existing) throw new NotFoundError('Aset');
 
       await prisma.asset.update({
@@ -151,7 +151,7 @@ router.delete(
 // GET /api/assets/:id/qr - Regenerate QR Code
 router.get('/:id/qr', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const asset = await prisma.asset.findUnique({ where: { id: req.params.id, isDeleted: false } });
+    const asset = await prisma.asset.findUnique({ where: { id: req.params.id as string, isDeleted: false } });
     if (!asset) throw new NotFoundError('Aset');
 
     const qrData = buildAssetQRData(asset);
@@ -171,7 +171,7 @@ router.post(
   authorize('ADMIN', 'STAF_TU'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const asset = await prisma.asset.findUnique({ where: { id: req.params.id, isDeleted: false } });
+      const asset = await prisma.asset.findUnique({ where: { id: req.params.id as string, isDeleted: false } });
       if (!asset) throw new NotFoundError('Aset');
 
       const log = await prisma.maintenanceLog.create({
