@@ -11,10 +11,10 @@ const router = Router();
 
 function signTokens(payload: AuthPayload) {
   const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    expiresIn: 900, // 15 minutes
   });
   const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, {
-    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    expiresIn: 604800, // 7 days
   });
   return { accessToken, refreshToken };
 }
