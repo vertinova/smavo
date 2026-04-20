@@ -88,14 +88,14 @@ router.patch(
   validate(returnAssetLoanSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const loan = await prisma.assetLoan.findUnique({ where: { id: req.params.id } });
+      const loan = await prisma.assetLoan.findUnique({ where: { id: req.params.id as string } });
       if (!loan) throw new NotFoundError('Peminjaman');
       if (loan.status === 'DIKEMBALIKAN') throw new AppError('Aset sudah dikembalikan', 400);
 
       const returnDate = req.body.returnDate ? new Date(req.body.returnDate) : new Date();
 
       const updated = await prisma.assetLoan.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data: {
           returnDate,
           status: 'DIKEMBALIKAN',

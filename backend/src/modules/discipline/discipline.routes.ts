@@ -62,7 +62,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/student/:studentId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const student = await prisma.student.findUnique({
-      where: { id: req.params.studentId },
+      where: { id: req.params.studentId as string },
       select: {
         id: true, nisn: true, fullName: true, gender: true, phone: true,
         class: { select: { id: true, name: true } },
@@ -71,13 +71,13 @@ router.get('/student/:studentId', async (req: Request, res: Response, next: Next
     if (!student) throw new NotFoundError('Siswa tidak ditemukan');
 
     const logs = await prisma.disciplineLog.findMany({
-      where: { studentId: req.params.studentId },
+      where: { studentId: req.params.studentId as string },
       orderBy: { date: 'desc' },
     });
 
     const byType = await prisma.disciplineLog.groupBy({
       by: ['type'],
-      where: { studentId: req.params.studentId },
+      where: { studentId: req.params.studentId as string },
       _count: { id: true },
     });
 
@@ -202,14 +202,14 @@ router.post('/', validate(createDisciplineLogSchema), async (req: Request, res: 
 // PATCH /api/discipline/:id
 router.patch('/:id', validate(updateDisciplineLogSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const existing = await prisma.disciplineLog.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.disciplineLog.findUnique({ where: { id: req.params.id as string } });
     if (!existing) throw new NotFoundError('Log tidak ditemukan');
 
     const data: any = { ...req.body };
     if (data.date) data.date = new Date(data.date);
 
     const log = await prisma.disciplineLog.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data,
       include: {
         student: {
@@ -227,10 +227,10 @@ router.patch('/:id', validate(updateDisciplineLogSchema), async (req: Request, r
 // DELETE /api/discipline/:id
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const existing = await prisma.disciplineLog.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.disciplineLog.findUnique({ where: { id: req.params.id as string } });
     if (!existing) throw new NotFoundError('Log tidak ditemukan');
 
-    await prisma.disciplineLog.delete({ where: { id: req.params.id } });
+    await prisma.disciplineLog.delete({ where: { id: req.params.id as string } });
     res.json({ success: true, message: 'Log berhasil dihapus' });
   } catch (err) {
     next(err);

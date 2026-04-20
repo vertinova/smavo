@@ -120,7 +120,7 @@ router.patch(
   validate(updateExpenseSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.expense.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma.expense.findUnique({ where: { id: req.params.id as string } });
       if (!existing) throw new NotFoundError('Pengeluaran');
 
       const data: any = { ...req.body };
@@ -133,7 +133,7 @@ router.patch(
       if (data.transactionDate) data.transactionDate = new Date(data.transactionDate);
 
       const expense = await prisma.expense.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data,
       });
 
@@ -151,7 +151,7 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const expense = await prisma.expense.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data: { status: 'APPROVED', approvedAt: new Date() },
       });
       res.json({ success: true, data: expense });

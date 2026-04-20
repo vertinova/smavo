@@ -116,7 +116,7 @@ router.patch(
       if (!existing) throw new NotFoundError('Aset');
 
       const asset = await prisma.asset.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data: req.body,
       });
 
@@ -137,7 +137,7 @@ router.delete(
       if (!existing) throw new NotFoundError('Aset');
 
       await prisma.asset.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data: { isDeleted: true },
       });
 

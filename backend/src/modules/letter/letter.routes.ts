@@ -75,10 +75,10 @@ router.delete(
   authorize('ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.letter.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma.letter.findUnique({ where: { id: req.params.id as string } });
       if (!existing) throw new NotFoundError('Surat');
 
-      await prisma.letter.delete({ where: { id: req.params.id } });
+      await prisma.letter.delete({ where: { id: req.params.id as string } });
       res.json({ success: true, message: 'Surat berhasil dihapus' });
     } catch (err) {
       next(err);

@@ -50,7 +50,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const teacher = await prisma.teacher.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: { homeroomOf: true },
     });
     if (!teacher) throw new NotFoundError('Guru');
@@ -85,13 +85,13 @@ router.patch(
   validate(updateTeacherSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.teacher.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma.teacher.findUnique({ where: { id: req.params.id as string } });
       if (!existing) throw new NotFoundError('Guru');
 
       const data = { ...req.body };
       if (data.birthDate) data.birthDate = new Date(data.birthDate);
 
-      const teacher = await prisma.teacher.update({ where: { id: req.params.id }, data });
+      const teacher = await prisma.teacher.update({ where: { id: req.params.id as string }, data });
       res.json({ success: true, data: teacher });
     } catch (err) {
       next(err);
@@ -105,11 +105,11 @@ router.delete(
   authorize('ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.teacher.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma.teacher.findUnique({ where: { id: req.params.id as string } });
       if (!existing) throw new NotFoundError('Guru');
 
       await prisma.teacher.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data: { isActive: false },
       });
 

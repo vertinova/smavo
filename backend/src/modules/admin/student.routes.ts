@@ -51,7 +51,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const student = await prisma.student.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: { class: true },
     });
     if (!student) throw new NotFoundError('Siswa');
@@ -86,13 +86,13 @@ router.patch(
   validate(updateStudentSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.student.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma.student.findUnique({ where: { id: req.params.id as string } });
       if (!existing) throw new NotFoundError('Siswa');
 
       const data = { ...req.body };
       if (data.birthDate) data.birthDate = new Date(data.birthDate);
 
-      const student = await prisma.student.update({ where: { id: req.params.id }, data });
+      const student = await prisma.student.update({ where: { id: req.params.id as string }, data });
       res.json({ success: true, data: student });
     } catch (err) {
       next(err);
@@ -106,11 +106,11 @@ router.delete(
   authorize('ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const existing = await prisma.student.findUnique({ where: { id: req.params.id } });
+      const existing = await prisma.student.findUnique({ where: { id: req.params.id as string } });
       if (!existing) throw new NotFoundError('Siswa');
 
       await prisma.student.update({
-        where: { id: req.params.id },
+        where: { id: req.params.id as string },
         data: { isActive: false },
       });
 

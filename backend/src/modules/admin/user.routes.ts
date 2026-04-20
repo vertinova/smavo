@@ -82,7 +82,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       select: {
         id: true,
         email: true,
@@ -143,7 +143,7 @@ router.patch('/:id', validate(updateUserSchema), async (req: Request, res: Respo
   try {
     const { email, fullName, role, nip, phone, isActive } = req.body;
 
-    const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.user.findUnique({ where: { id: req.params.id as string } });
     if (!existing) throw new NotFoundError('Pengguna');
 
     // Prevent deactivating own account
@@ -159,13 +159,13 @@ router.patch('/:id', validate(updateUserSchema), async (req: Request, res: Respo
 
     if (nip) {
       const nipExists = await prisma.profile.findFirst({
-        where: { nip, NOT: { userId: req.params.id } },
+        where: { nip, NOT: { userId: req.params.id as string } },
       });
       if (nipExists) throw new AppError('NIP sudah digunakan', 409);
     }
 
     const user = await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: {
         ...(email && { email }),
         ...(role && { role }),
@@ -197,12 +197,12 @@ router.patch('/:id', validate(updateUserSchema), async (req: Request, res: Respo
 // PATCH /api/users/:id/password
 router.patch('/:id/password', validate(changePasswordSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.user.findUnique({ where: { id: req.params.id as string } });
     if (!existing) throw new NotFoundError('Pengguna');
 
     const hashedPassword = await bcrypt.hash(req.body.newPassword, 12);
     await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { password: hashedPassword },
     });
 
@@ -215,7 +215,7 @@ router.patch('/:id/password', validate(changePasswordSchema), async (req: Reques
 // DELETE /api/users/:id (soft delete = deactivate)
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const existing = await prisma.user.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.user.findUnique({ where: { id: req.params.id as string } });
     if (!existing) throw new NotFoundError('Pengguna');
 
     const authUser = (req as any).user;
@@ -224,7 +224,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
     }
 
     await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { isActive: false },
     });
 
