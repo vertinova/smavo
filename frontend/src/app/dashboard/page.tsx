@@ -7,6 +7,13 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatCurrency, cn } from '@/lib/utils';
+
+function formatCompact(num: number): string {
+  if (num >= 1_000_000_000) return `Rp${(num / 1_000_000_000).toFixed(1).replace('.0', '')}M`;
+  if (num >= 1_000_000) return `Rp${(num / 1_000_000).toFixed(1).replace('.0', '')}Jt`;
+  if (num >= 1_000) return `Rp${(num / 1_000).toFixed(0)}Rb`;
+  return `Rp${num}`;
+}
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -242,7 +249,7 @@ function AdminDashboard({ user }: { user: any }) {
   // Build stat cards based on role access
   const statCards = [
     canSeeAssets && { label: 'Total Aset', value: isLoading ? '—' : s?.totalAssets?.toLocaleString('id-ID') ?? '0', icon: Package, href: '/dashboard/assets', gradient: 'stat-card-blue', iconBg: 'bg-blue-500', valueColor: 'stat-value-blue' },
-    canSeeFinance && { label: 'Anggaran', value: isLoading ? '—' : formatCurrency(s?.totalBudget ?? 0), icon: Wallet, href: '/dashboard/finance', gradient: 'stat-card-emerald', iconBg: 'bg-emerald-500', valueColor: 'stat-value-emerald' },
+    canSeeFinance && { label: 'Anggaran', value: isLoading ? '—' : formatCompact(s?.totalBudget ?? 0), icon: Wallet, href: '/dashboard/finance', gradient: 'stat-card-emerald', iconBg: 'bg-emerald-500', valueColor: 'stat-value-emerald' },
     canSeeStudents && { label: 'Siswa', value: isLoading ? '—' : s?.totalStudents?.toLocaleString('id-ID') ?? '0', icon: GraduationCap, href: '/dashboard/students', gradient: 'stat-card-violet', iconBg: 'bg-violet-500', valueColor: 'stat-value-violet' },
     canSeeTeachers && { label: 'Guru', value: isLoading ? '—' : s?.totalTeachers?.toLocaleString('id-ID') ?? '0', icon: Users, href: '/dashboard/teachers', gradient: 'stat-card-amber', iconBg: 'bg-amber-500', valueColor: 'stat-value-amber' },
     canSeeDiscipline && { label: 'Kedisiplinan', value: isLoading ? '—' : s?.totalDisciplineLogs?.toLocaleString('id-ID') ?? '0', icon: ShieldAlert, href: '/dashboard/discipline', gradient: 'stat-card-blue', iconBg: 'bg-red-500', valueColor: 'stat-value-blue' },
@@ -266,18 +273,18 @@ function AdminDashboard({ user }: { user: any }) {
 
       {/* Stats */}
       {statCards.length > 0 && (
-        <div className={cn('grid gap-4', statCards.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4')}>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {statCards.map((card) => (
             <Link key={card.label} href={card.href}
               className={`group stat-card ${card.gradient}`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl ${card.iconBg} flex items-center justify-center shadow-lg`}>
-                  <card.icon size={18} strokeWidth={1.5} className="text-white" />
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl ${card.iconBg} flex items-center justify-center shadow-lg`}>
+                  <card.icon size={16} strokeWidth={1.5} className="text-white sm:!w-[18px] sm:!h-[18px]" />
                 </div>
                 <ArrowUpRight size={14} className="stat-card-arrow group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </div>
-              <p className={`text-xl sm:text-2xl font-extrabold tracking-tight ${card.valueColor}`}>{card.value}</p>
-              <p className="text-[11px] stat-card-label uppercase tracking-wider mt-1 font-medium">{card.label}</p>
+              <p className={`text-lg sm:text-2xl font-extrabold tracking-tight ${card.valueColor} truncate`}>{card.value}</p>
+              <p className="text-[10px] sm:text-[11px] stat-card-label uppercase tracking-wider mt-1 font-medium">{card.label}</p>
             </Link>
           ))}
         </div>
@@ -285,7 +292,7 @@ function AdminDashboard({ user }: { user: any }) {
 
       {/* Two-column: Budget + Assets (only if user has access) */}
       {(canSeeFinance || canSeeAssets) && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* Budget chart */}
           {canSeeFinance && (
             <div className={cn('card', canSeeAssets ? 'lg:col-span-2' : 'lg:col-span-5')}>
