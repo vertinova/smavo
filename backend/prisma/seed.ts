@@ -427,7 +427,10 @@ async function main() {
     return result;
   }
 
-  const rootDir = path.resolve(process.cwd(), '..');
+  // CSV directory: use /data/csv/ in Docker, or parent dir for local dev
+  const dockerCsvDir = '/data/csv';
+  const localCsvDir = path.resolve(process.cwd(), '..');
+  const rootDir = fs.existsSync(dockerCsvDir) ? dockerCsvDir : localCsvDir;
 
   // ── Create real classes from all CSV files ──
   const realClasses: Record<string, string> = {}; // name -> id

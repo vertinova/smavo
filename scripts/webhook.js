@@ -72,8 +72,8 @@ const server = http.createServer((req, res) => {
     res.end('Deploy triggered');
 
     log('🚀 Starting deploy...');
-    const cmd = `cd ${PROJECT_DIR} && git pull origin main && docker compose up -d --build 2>&1 >> ${LOG_FILE}`;
-    exec(cmd, (err, stdout, stderr) => {
+    const cmd = `cd ${PROJECT_DIR} && git pull origin main && docker compose down && docker compose up -d --build 2>&1 >> ${LOG_FILE}`;
+    exec(cmd, { timeout: 600000 }, (err, stdout, stderr) => {
       if (err) {
         log(`❌ Deploy failed: ${err.message}`);
       } else {
