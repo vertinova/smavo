@@ -82,6 +82,11 @@ export type RKASItem = Prisma.RKASItemModel
  */
 export type Expense = Prisma.ExpenseModel
 /**
+ * Model Income
+ * 
+ */
+export type Income = Prisma.IncomeModel
+/**
  * Model ExpenseAttachment
  * 
  */

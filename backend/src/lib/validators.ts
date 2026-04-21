@@ -74,6 +74,15 @@ export const createExpenseSchema = z.object({
 
 export const updateExpenseSchema = createExpenseSchema.partial();
 
+// Income
+export const createIncomeSchema = z.object({
+  description: z.string().min(1, 'Deskripsi wajib diisi'),
+  amount: z.number().positive('Jumlah harus lebih dari 0'),
+  fundSource: z.enum(['BOS_REGULER', 'BOS_KINERJA', 'BOS_AFIRMASI', 'APBD', 'KOMITE', 'LAINNYA']),
+  receivedDate: z.string().datetime(),
+  notes: z.string().optional(),
+});
+
 // Student
 export const createStudentSchema = z.object({
   nisn: z.string().length(10, 'NISN harus 10 digit'),

@@ -59,6 +59,7 @@ export const ModelName = {
   RKAS: 'RKAS',
   RKASItem: 'RKASItem',
   Expense: 'Expense',
+  Income: 'Income',
   ExpenseAttachment: 'ExpenseAttachment',
   Student: 'Student',
   Teacher: 'Teacher',
@@ -91,6 +92,7 @@ export const UserScalarFieldEnum = {
   password: 'password',
   role: 'role',
   isActive: 'isActive',
+  allowedFeatures: 'allowedFeatures',
   refreshToken: 'refreshToken',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -216,6 +218,22 @@ export const ExpenseScalarFieldEnum = {
 } as const
 
 export type ExpenseScalarFieldEnum = (typeof ExpenseScalarFieldEnum)[keyof typeof ExpenseScalarFieldEnum]
+
+
+export const IncomeScalarFieldEnum = {
+  id: 'id',
+  rkasId: 'rkasId',
+  description: 'description',
+  amount: 'amount',
+  fundSource: 'fundSource',
+  receivedDate: 'receivedDate',
+  notes: 'notes',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type IncomeScalarFieldEnum = (typeof IncomeScalarFieldEnum)[keyof typeof IncomeScalarFieldEnum]
 
 
 export const ExpenseAttachmentScalarFieldEnum = {

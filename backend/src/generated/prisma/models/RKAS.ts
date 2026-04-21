@@ -245,6 +245,7 @@ export type RKASWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"RKAS"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RKAS"> | Date | string
   items?: Prisma.RKASItemListRelationFilter
+  incomes?: Prisma.IncomeListRelationFilter
 }
 
 export type RKASOrderByWithRelationInput = {
@@ -257,6 +258,7 @@ export type RKASOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   items?: Prisma.RKASItemOrderByRelationAggregateInput
+  incomes?: Prisma.IncomeOrderByRelationAggregateInput
 }
 
 export type RKASWhereUniqueInput = Prisma.AtLeast<{
@@ -272,6 +274,7 @@ export type RKASWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"RKAS"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RKAS"> | Date | string
   items?: Prisma.RKASItemListRelationFilter
+  incomes?: Prisma.IncomeListRelationFilter
 }, "id" | "fiscalYear">
 
 export type RKASOrderByWithAggregationInput = {
@@ -314,6 +317,7 @@ export type RKASCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.RKASItemCreateNestedManyWithoutRkasInput
+  incomes?: Prisma.IncomeCreateNestedManyWithoutRkasInput
 }
 
 export type RKASUncheckedCreateInput = {
@@ -326,6 +330,7 @@ export type RKASUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.RKASItemUncheckedCreateNestedManyWithoutRkasInput
+  incomes?: Prisma.IncomeUncheckedCreateNestedManyWithoutRkasInput
 }
 
 export type RKASUpdateInput = {
@@ -338,6 +343,7 @@ export type RKASUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.RKASItemUpdateManyWithoutRkasNestedInput
+  incomes?: Prisma.IncomeUpdateManyWithoutRkasNestedInput
 }
 
 export type RKASUncheckedUpdateInput = {
@@ -350,6 +356,7 @@ export type RKASUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.RKASItemUncheckedUpdateManyWithoutRkasNestedInput
+  incomes?: Prisma.IncomeUncheckedUpdateManyWithoutRkasNestedInput
 }
 
 export type RKASCreateManyInput = {
@@ -455,6 +462,20 @@ export type RKASUpdateOneRequiredWithoutItemsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.RKASUpdateToOneWithWhereWithoutItemsInput, Prisma.RKASUpdateWithoutItemsInput>, Prisma.RKASUncheckedUpdateWithoutItemsInput>
 }
 
+export type RKASCreateNestedOneWithoutIncomesInput = {
+  create?: Prisma.XOR<Prisma.RKASCreateWithoutIncomesInput, Prisma.RKASUncheckedCreateWithoutIncomesInput>
+  connectOrCreate?: Prisma.RKASCreateOrConnectWithoutIncomesInput
+  connect?: Prisma.RKASWhereUniqueInput
+}
+
+export type RKASUpdateOneRequiredWithoutIncomesNestedInput = {
+  create?: Prisma.XOR<Prisma.RKASCreateWithoutIncomesInput, Prisma.RKASUncheckedCreateWithoutIncomesInput>
+  connectOrCreate?: Prisma.RKASCreateOrConnectWithoutIncomesInput
+  upsert?: Prisma.RKASUpsertWithoutIncomesInput
+  connect?: Prisma.RKASWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.RKASUpdateToOneWithWhereWithoutIncomesInput, Prisma.RKASUpdateWithoutIncomesInput>, Prisma.RKASUncheckedUpdateWithoutIncomesInput>
+}
+
 export type RKASCreateWithoutItemsInput = {
   id?: string
   fiscalYear: number
@@ -464,6 +485,7 @@ export type RKASCreateWithoutItemsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  incomes?: Prisma.IncomeCreateNestedManyWithoutRkasInput
 }
 
 export type RKASUncheckedCreateWithoutItemsInput = {
@@ -475,6 +497,7 @@ export type RKASUncheckedCreateWithoutItemsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  incomes?: Prisma.IncomeUncheckedCreateNestedManyWithoutRkasInput
 }
 
 export type RKASCreateOrConnectWithoutItemsInput = {
@@ -502,6 +525,7 @@ export type RKASUpdateWithoutItemsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  incomes?: Prisma.IncomeUpdateManyWithoutRkasNestedInput
 }
 
 export type RKASUncheckedUpdateWithoutItemsInput = {
@@ -513,6 +537,71 @@ export type RKASUncheckedUpdateWithoutItemsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  incomes?: Prisma.IncomeUncheckedUpdateManyWithoutRkasNestedInput
+}
+
+export type RKASCreateWithoutIncomesInput = {
+  id?: string
+  fiscalYear: number
+  title: string
+  totalBudget: runtime.Decimal | runtime.DecimalJsLike | number | string
+  approvedAt?: Date | string | null
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.RKASItemCreateNestedManyWithoutRkasInput
+}
+
+export type RKASUncheckedCreateWithoutIncomesInput = {
+  id?: string
+  fiscalYear: number
+  title: string
+  totalBudget: runtime.Decimal | runtime.DecimalJsLike | number | string
+  approvedAt?: Date | string | null
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.RKASItemUncheckedCreateNestedManyWithoutRkasInput
+}
+
+export type RKASCreateOrConnectWithoutIncomesInput = {
+  where: Prisma.RKASWhereUniqueInput
+  create: Prisma.XOR<Prisma.RKASCreateWithoutIncomesInput, Prisma.RKASUncheckedCreateWithoutIncomesInput>
+}
+
+export type RKASUpsertWithoutIncomesInput = {
+  update: Prisma.XOR<Prisma.RKASUpdateWithoutIncomesInput, Prisma.RKASUncheckedUpdateWithoutIncomesInput>
+  create: Prisma.XOR<Prisma.RKASCreateWithoutIncomesInput, Prisma.RKASUncheckedCreateWithoutIncomesInput>
+  where?: Prisma.RKASWhereInput
+}
+
+export type RKASUpdateToOneWithWhereWithoutIncomesInput = {
+  where?: Prisma.RKASWhereInput
+  data: Prisma.XOR<Prisma.RKASUpdateWithoutIncomesInput, Prisma.RKASUncheckedUpdateWithoutIncomesInput>
+}
+
+export type RKASUpdateWithoutIncomesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  fiscalYear?: Prisma.IntFieldUpdateOperationsInput | number
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  totalBudget?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  approvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.RKASItemUpdateManyWithoutRkasNestedInput
+}
+
+export type RKASUncheckedUpdateWithoutIncomesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  fiscalYear?: Prisma.IntFieldUpdateOperationsInput | number
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  totalBudget?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  approvedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.RKASItemUncheckedUpdateManyWithoutRkasNestedInput
 }
 
 
@@ -522,10 +611,12 @@ export type RKASUncheckedUpdateWithoutItemsInput = {
 
 export type RKASCountOutputType = {
   items: number
+  incomes: number
 }
 
 export type RKASCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | RKASCountOutputTypeCountItemsArgs
+  incomes?: boolean | RKASCountOutputTypeCountIncomesArgs
 }
 
 /**
@@ -545,6 +636,13 @@ export type RKASCountOutputTypeCountItemsArgs<ExtArgs extends runtime.Types.Exte
   where?: Prisma.RKASItemWhereInput
 }
 
+/**
+ * RKASCountOutputType without action
+ */
+export type RKASCountOutputTypeCountIncomesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.IncomeWhereInput
+}
+
 
 export type RKASSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -556,6 +654,7 @@ export type RKASSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   createdAt?: boolean
   updatedAt?: boolean
   items?: boolean | Prisma.RKAS$itemsArgs<ExtArgs>
+  incomes?: boolean | Prisma.RKAS$incomesArgs<ExtArgs>
   _count?: boolean | Prisma.RKASCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["rKAS"]>
 
@@ -595,6 +694,7 @@ export type RKASSelectScalar = {
 export type RKASOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "fiscalYear" | "title" | "totalBudget" | "approvedAt" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["rKAS"]>
 export type RKASInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   items?: boolean | Prisma.RKAS$itemsArgs<ExtArgs>
+  incomes?: boolean | Prisma.RKAS$incomesArgs<ExtArgs>
   _count?: boolean | Prisma.RKASCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type RKASIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -604,6 +704,7 @@ export type $RKASPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   name: "RKAS"
   objects: {
     items: Prisma.$RKASItemPayload<ExtArgs>[]
+    incomes: Prisma.$IncomePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1009,6 +1110,7 @@ readonly fields: RKASFieldRefs;
 export interface Prisma__RKASClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   items<T extends Prisma.RKAS$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.RKAS$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RKASItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  incomes<T extends Prisma.RKAS$incomesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.RKAS$incomesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$IncomePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1460,6 +1562,30 @@ export type RKAS$itemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
   take?: number
   skip?: number
   distinct?: Prisma.RKASItemScalarFieldEnum | Prisma.RKASItemScalarFieldEnum[]
+}
+
+/**
+ * RKAS.incomes
+ */
+export type RKAS$incomesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Income
+   */
+  select?: Prisma.IncomeSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Income
+   */
+  omit?: Prisma.IncomeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.IncomeInclude<ExtArgs> | null
+  where?: Prisma.IncomeWhereInput
+  orderBy?: Prisma.IncomeOrderByWithRelationInput | Prisma.IncomeOrderByWithRelationInput[]
+  cursor?: Prisma.IncomeWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.IncomeScalarFieldEnum | Prisma.IncomeScalarFieldEnum[]
 }
 
 /**

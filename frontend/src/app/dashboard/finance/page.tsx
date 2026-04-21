@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wallet, TrendingDown, CheckCircle, Plus, X, Receipt } from 'lucide-react';
+import { Wallet, TrendingDown, TrendingUp, CheckCircle, Plus, X, Receipt, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -30,12 +30,19 @@ const EMPTY_EXP = {
   vendor: '', notes: '', rkasItemId: '',
 };
 
+const EMPTY_INCOME = {
+  description: '', amount: '', fundSource: 'BOS_REGULER' as string,
+  receivedDate: new Date().toISOString().split('T')[0], notes: '',
+};
+
 export default function FinancePage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'rkas' | 'expenses'>('rkas');
-  const [modal, setModal] = useState(false);
+  const [tab, setTab] = useState<'rkas' | 'incomes' | 'expenses'>('rkas');
+  const [modal, setModal] = useState<'expense' | 'income' | null>(null);
   const [form, setForm] = useState(EMPTY_EXP);
+  const [incomeForm, setIncomeForm] = useState(EMPTY_INCOME);
   const [expPage, setExpPage] = useState(1);
+  const [incPage, setIncPage] = useState(1);
 
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ['finance', 'summary'],
@@ -53,15 +60,42 @@ export default function FinancePage() {
     enabled: tab === 'expenses',
   });
 
+  const { data: incData, isLoading: loadingInc } = useQuery({
+    queryKey: ['incomes', incPage],
+    queryFn: () => api.get(`/finance/incomes?page=${incPage}&limit=20&sortOrder=desc`).then(r => r.data),
+    enabled: tab === 'incomes',
+  });
+
   const createExp = useMutation({
     mutationFn: (d: any) => api.post('/finance/expenses', d),
     onSuccess: () => {
       toast.success('Pengeluaran berhasil ditambahkan');
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['finance'] });
-      setModal(false); setForm(EMPTY_EXP);
+      setModal(null); setForm(EMPTY_EXP);
     },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Gagal menambah pengeluaran'),
+  });
+
+  const createIncome = useMutation({
+    mutationFn: (d: any) => api.post('/finance/incomes', d),
+    onSuccess: () => {
+      toast.success('Pemasukan berhasil ditambahkan');
+      qc.invalidateQueries({ queryKey: ['incomes'] });
+      qc.invalidateQueries({ queryKey: ['finance'] });
+      setModal(null); setIncomeForm(EMPTY_INCOME);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Gagal menambah pemasukan'),
+  });
+
+  const deleteIncome = useMutation({
+    mutationFn: (id: string) => api.delete(`/finance/incomes/${id}`),
+    onSuccess: () => {
+      toast.success('Pemasukan berhasil dihapus');
+      qc.invalidateQueries({ queryKey: ['incomes'] });
+      qc.invalidateQueries({ queryKey: ['finance'] });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Gagal menghapus pemasukan'),
   });
 
   const approveExp = useMutation({
@@ -75,8 +109,10 @@ export default function FinancePage() {
 
   const budget = Number(summary?.data?.totalBudget ?? 0);
   const spent = Number(summary?.data?.totalSpent ?? 0);
+  const totalIncome = Number(summary?.data?.totalIncome ?? 0);
   const remaining = budget - spent;
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+  const setInc = (k: string, v: any) => setIncomeForm(f => ({ ...f, [k]: v }));
 
   const submitExp = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,17 +131,23 @@ export default function FinancePage() {
           <p className="text-[11px] text-muted uppercase tracking-widest mb-1">Keuangan</p>
           <h2 className="text-xl font-bold text-foreground tracking-tight">Dana BOS</h2>
         </div>
-        <button className="btn-primary" onClick={() => { setForm(EMPTY_EXP); setModal(true); }}>
-          <Plus size={14} /> Catat Pengeluaran
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-secondary" onClick={() => { setIncomeForm(EMPTY_INCOME); setModal('income'); }}>
+            <TrendingUp size={14} /> Catat Pemasukan
+          </button>
+          <button className="btn-primary" onClick={() => { setForm(EMPTY_EXP); setModal('expense'); }}>
+            <Plus size={14} /> Catat Pengeluaran
+          </button>
+        </div>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Anggaran', value: budget, icon: Wallet, iconColor: 'text-accent', iconBg: 'bg-accent/10' },
+          { label: 'Total Pemasukan', value: totalIncome, icon: TrendingUp, iconColor: 'text-success', iconBg: 'bg-success/10' },
           { label: 'Terpakai', value: spent, icon: TrendingDown, iconColor: 'text-warning', iconBg: 'bg-warning/10' },
-          { label: 'Sisa Anggaran', value: remaining, icon: CheckCircle, iconColor: 'text-success', iconBg: 'bg-success/10' },
+          { label: 'Sisa Anggaran', value: remaining, icon: CheckCircle, iconColor: remaining >= 0 ? 'text-success' : 'text-danger', iconBg: remaining >= 0 ? 'bg-success/10' : 'bg-danger/10' },
         ].map(c => (
           <div key={c.label} className="card">
             <div className="flex items-center justify-between mb-3">
@@ -123,12 +165,12 @@ export default function FinancePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-card rounded-xl p-1 w-fit border border-border">
-        {(['rkas', 'expenses'] as const).map(t => (
+        {(['rkas', 'incomes', 'expenses'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               tab === t ? 'bg-accent/10 text-accent' : 'text-muted hover:text-foreground'
             }`}>
-            {t === 'rkas' ? 'RKAS' : 'Pengeluaran'}
+            {t === 'rkas' ? 'RKAS' : t === 'incomes' ? 'Pemasukan' : 'Pengeluaran'}
           </button>
         ))}
       </div>
@@ -174,6 +216,50 @@ export default function FinancePage() {
                 {!rkasData?.data?.items?.length && (
                   <tr><td colSpan={6} className="px-4 py-12 text-center text-muted">Belum ada data RKAS</td></tr>
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Incomes Tab */}
+      {tab === 'incomes' && (
+        <div className="card !p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface/50">
+                  <th className="th">Tanggal</th>
+                  <th className="th">Deskripsi</th>
+                  <th className="th">Sumber Dana</th>
+                  <th className="th text-right">Jumlah</th>
+                  <th className="th">Catatan</th>
+                  <th className="th w-20"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingInc ? [...Array(3)].map((_, i) => (
+                  <tr key={i} className="tr"><td colSpan={6} className="td"><div className="h-5 bg-surface rounded animate-pulse" /></td></tr>
+                )) : (incData?.data ?? []).length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-12 text-center">
+                    <TrendingUp size={32} className="mx-auto text-muted/30 mb-2" />
+                    <p className="text-muted text-sm">Belum ada pemasukan</p>
+                  </td></tr>
+                ) : (incData?.data ?? []).map((inc: any) => (
+                  <tr key={inc.id} className="tr">
+                    <td className="td text-muted text-xs">{new Date(inc.receivedDate).toLocaleDateString('id-ID')}</td>
+                    <td className="td font-medium text-foreground">{inc.description}</td>
+                    <td className="td"><span className="badge-info text-[10px]">{FUND[inc.fundSource] ?? inc.fundSource}</span></td>
+                    <td className="td text-right font-medium text-success">{formatCurrency(Number(inc.amount))}</td>
+                    <td className="td text-muted text-xs">{inc.notes || '—'}</td>
+                    <td className="td">
+                      <button onClick={() => { if (confirm('Hapus pemasukan ini?')) deleteIncome.mutate(inc.id); }}
+                        className="p-1 rounded-lg hover:bg-danger/10 text-muted hover:text-danger transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -234,13 +320,13 @@ export default function FinancePage() {
       )}
 
       {/* Expense Modal */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={() => setModal(false)}>
+      {modal === 'expense' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={() => setModal(null)}>
           <div className="fixed inset-0 bg-black/60 backdrop-blur-md" />
           <div className="relative bg-card border border-border rounded-2xl shadow-modal w-full max-w-lg animate-slideUp" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h3 className="font-semibold text-foreground">Catat Pengeluaran</h3>
-              <button onClick={() => setModal(false)} className="p-1 rounded-lg hover:bg-foreground/[0.06] text-muted"><X size={18} /></button>
+              <button onClick={() => setModal(null)} className="p-1 rounded-lg hover:bg-foreground/[0.06] text-muted"><X size={18} /></button>
             </div>
             <form onSubmit={submitExp}>
               <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
@@ -273,9 +359,48 @@ export default function FinancePage() {
                 <div><label className="label">Catatan</label><textarea className="input" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} /></div>
               </div>
               <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
-                <button type="button" onClick={() => setModal(false)} className="btn-secondary">Batal</button>
+                <button type="button" onClick={() => setModal(null)} className="btn-secondary">Batal</button>
                 <button type="submit" className="btn-primary" disabled={createExp.isPending}>
                   {createExp.isPending ? 'Menyimpan...' : 'Simpan Pengeluaran'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Income Modal */}
+      {modal === 'income' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={() => setModal(null)}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md" />
+          <div className="relative bg-card border border-border rounded-2xl shadow-modal w-full max-w-lg animate-slideUp" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="font-semibold text-foreground">Catat Pemasukan</h3>
+              <button onClick={() => setModal(null)} className="p-1 rounded-lg hover:bg-foreground/[0.06] text-muted"><X size={18} /></button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              createIncome.mutate({
+                ...incomeForm,
+                amount: Number(incomeForm.amount),
+                receivedDate: new Date(incomeForm.receivedDate).toISOString(),
+              });
+            }}>
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div><label className="label">Deskripsi *</label><input className="input" required value={incomeForm.description} onChange={e => setInc('description', e.target.value)} placeholder="Pencairan Dana BOS Reguler Triwulan 1" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="label">Jumlah (Rp) *</label><input type="number" className="input" required value={incomeForm.amount} onChange={e => setInc('amount', e.target.value)} placeholder="0" /></div>
+                  <div><label className="label">Tanggal Diterima *</label><input type="date" className="input" required value={incomeForm.receivedDate} onChange={e => setInc('receivedDate', e.target.value)} /></div>
+                </div>
+                <div><label className="label">Sumber Dana *</label><select className="input" value={incomeForm.fundSource} onChange={e => setInc('fundSource', e.target.value)}>
+                  {Object.entries(FUND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select></div>
+                <div><label className="label">Catatan</label><textarea className="input" rows={2} value={incomeForm.notes} onChange={e => setInc('notes', e.target.value)} /></div>
+              </div>
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
+                <button type="button" onClick={() => setModal(null)} className="btn-secondary">Batal</button>
+                <button type="submit" className="btn-primary" disabled={createIncome.isPending}>
+                  {createIncome.isPending ? 'Menyimpan...' : 'Simpan Pemasukan'}
                 </button>
               </div>
             </form>

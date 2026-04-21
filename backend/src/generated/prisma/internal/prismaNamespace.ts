@@ -392,6 +392,7 @@ export const ModelName = {
   RKAS: 'RKAS',
   RKASItem: 'RKASItem',
   Expense: 'Expense',
+  Income: 'Income',
   ExpenseAttachment: 'ExpenseAttachment',
   Student: 'Student',
   Teacher: 'Teacher',
@@ -415,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "profile" | "asset" | "maintenanceLog" | "assetLoan" | "rKAS" | "rKASItem" | "expense" | "expenseAttachment" | "student" | "teacher" | "class" | "studentAttendance" | "staffAttendance" | "disciplineLog" | "letter"
+    modelProps: "user" | "profile" | "asset" | "maintenanceLog" | "assetLoan" | "rKAS" | "rKASItem" | "expense" | "income" | "expenseAttachment" | "student" | "teacher" | "class" | "studentAttendance" | "staffAttendance" | "disciplineLog" | "letter"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1008,6 +1009,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ExpenseCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ExpenseCountAggregateOutputType> | number
+        }
+      }
+    }
+    Income: {
+      payload: Prisma.$IncomePayload<ExtArgs>
+      fields: Prisma.IncomeFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.IncomeFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.IncomeFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>
+        }
+        findFirst: {
+          args: Prisma.IncomeFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.IncomeFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>
+        }
+        findMany: {
+          args: Prisma.IncomeFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>[]
+        }
+        create: {
+          args: Prisma.IncomeCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>
+        }
+        createMany: {
+          args: Prisma.IncomeCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.IncomeCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>[]
+        }
+        delete: {
+          args: Prisma.IncomeDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>
+        }
+        update: {
+          args: Prisma.IncomeUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>
+        }
+        deleteMany: {
+          args: Prisma.IncomeDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.IncomeUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.IncomeUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>[]
+        }
+        upsert: {
+          args: Prisma.IncomeUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$IncomePayload>
+        }
+        aggregate: {
+          args: Prisma.IncomeAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateIncome>
+        }
+        groupBy: {
+          args: Prisma.IncomeGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.IncomeGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.IncomeCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.IncomeCountAggregateOutputType> | number
         }
       }
     }
@@ -1648,6 +1723,7 @@ export const UserScalarFieldEnum = {
   password: 'password',
   role: 'role',
   isActive: 'isActive',
+  allowedFeatures: 'allowedFeatures',
   refreshToken: 'refreshToken',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -1773,6 +1849,22 @@ export const ExpenseScalarFieldEnum = {
 } as const
 
 export type ExpenseScalarFieldEnum = (typeof ExpenseScalarFieldEnum)[keyof typeof ExpenseScalarFieldEnum]
+
+
+export const IncomeScalarFieldEnum = {
+  id: 'id',
+  rkasId: 'rkasId',
+  description: 'description',
+  amount: 'amount',
+  fundSource: 'fundSource',
+  receivedDate: 'receivedDate',
+  notes: 'notes',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type IncomeScalarFieldEnum = (typeof IncomeScalarFieldEnum)[keyof typeof IncomeScalarFieldEnum]
 
 
 export const ExpenseAttachmentScalarFieldEnum = {
@@ -2309,6 +2401,7 @@ export type GlobalOmitConfig = {
   rKAS?: Prisma.RKASOmit
   rKASItem?: Prisma.RKASItemOmit
   expense?: Prisma.ExpenseOmit
+  income?: Prisma.IncomeOmit
   expenseAttachment?: Prisma.ExpenseAttachmentOmit
   student?: Prisma.StudentOmit
   teacher?: Prisma.TeacherOmit

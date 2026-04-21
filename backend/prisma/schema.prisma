@@ -115,6 +115,7 @@ model User {
 
   profile       Profile?
   expenses      Expense[]
+  incomes       Income[]
   assetLoans    AssetLoan[]
   letters       Letter[]
 
@@ -213,6 +214,7 @@ model RKAS {
   updatedAt     DateTime     @updatedAt
 
   items         RKASItem[]
+  incomes       Income[]
 
   @@unique([fiscalYear])
   @@map("rkas")
@@ -261,6 +263,26 @@ model Expense {
   @@index([fundSource])
   @@index([transactionDate])
   @@map("expenses")
+}
+
+model Income {
+  id              String     @id @default(cuid())
+  rkasId          String
+  description     String
+  amount          Decimal    @db.Decimal(15, 2)
+  fundSource      FundSource
+  receivedDate    DateTime
+  notes           String?
+  createdById     String
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  rkas            RKAS       @relation(fields: [rkasId], references: [id], onDelete: Cascade)
+  createdBy       User       @relation(fields: [createdById], references: [id])
+
+  @@index([fundSource])
+  @@index([receivedDate])
+  @@map("incomes")
 }
 
 model ExpenseAttachment {
