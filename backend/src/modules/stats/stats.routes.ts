@@ -12,6 +12,7 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
       totalStudents,
       totalTeachers,
       totalClasses,
+      totalDisciplineLogs,
       latestRkas,
       assetsByCondition,
       recentExpenses,
@@ -21,6 +22,7 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
       prisma.student.count({ where: { isActive: true } }),
       prisma.teacher.count({ where: { isActive: true } }),
       prisma.class.count(),
+      prisma.disciplineLog.count(),
       prisma.rKAS.findFirst({
         orderBy: { fiscalYear: 'desc' },
         include: { items: true },
@@ -57,6 +59,7 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
         totalStudents,
         totalTeachers,
         totalClasses,
+        totalDisciplineLogs,
         totalBudget,
         totalSpent,
         fiscalYear: latestRkas?.fiscalYear ?? new Date().getFullYear(),

@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../lib/prisma.js';
-import { loginSchema, registerSchema, refreshTokenSchema } from '../../lib/validators.js';
+import { loginSchema, registerSchema, refreshTokenSchema, changePasswordSchema } from '../../lib/validators.js';
 import { validate } from '../../middleware/validate.js';
 import { authenticate, authorize, AuthPayload } from '../../middleware/auth.js';
 import { AppError, UnauthorizedError } from '../../lib/errors.js';
@@ -166,6 +166,31 @@ router.get('/me', authenticate, async (req: Request, res: Response, next: NextFu
         avatarUrl: user.profile?.avatarUrl,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/auth/change-password
+router.put('/change-password', authenticate, validate(changePasswordSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!user) throw new UnauthorizedError();
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      throw new AppError('Password lama tidak sesuai', 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ success: true, message: 'Password berhasil diubah' });
   } catch (err) {
     next(err);
   }

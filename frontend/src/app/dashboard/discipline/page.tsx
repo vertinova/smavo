@@ -117,58 +117,74 @@ function StudentDisciplineView() {
         </div>
       )}
 
-      {/* Stats by type */}
+      {/* Stats by type - colorful gradient cards */}
       {(myData?.total ?? 0) > 0 && (
         <div className="grid grid-cols-3 gap-3">
           {(myData?.byType ?? []).map((t: any) => {
             const tm = TYPE_MAP[t.type] ?? TYPE_MAP.TERLAMBAT;
+            const TIcon = tm.icon;
+            const cfg = t.type === 'TERLAMBAT'
+              ? { gradient: 'stat-card-amber', iconBg: 'bg-amber-500', valueColor: 'stat-value-amber' }
+              : t.type === 'ATRIBUT'
+              ? { gradient: 'stat-card-blue', iconBg: 'bg-blue-500', valueColor: 'stat-value-blue' }
+              : { gradient: 'stat-card-emerald', iconBg: 'bg-red-500', valueColor: 'stat-value-emerald' };
             return (
-              <div key={t.type} className="card text-center">
-                <p className="text-2xl font-bold text-foreground">{t.count}</p>
-                <p className="text-[11px] text-muted uppercase tracking-widest mt-1">{tm.label}</p>
+              <div key={t.type} className={`stat-card ${cfg.gradient}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-8 h-8 rounded-lg ${cfg.iconBg} flex items-center justify-center shadow-md`}>
+                    <TIcon size={14} strokeWidth={1.5} className="text-white" />
+                  </div>
+                </div>
+                <p className={`text-2xl font-extrabold tracking-tight ${cfg.valueColor}`}>{t.count}</p>
+                <p className="text-[10px] stat-card-label uppercase tracking-wider mt-1 font-medium">{tm.label}</p>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Violation history */}
+      {/* Violation history - timeline */}
       <div className="card">
-        <p className="text-xs font-semibold text-muted uppercase tracking-widest mb-4">Riwayat Pelanggaran</p>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Calendar size={14} className="text-accent" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">Riwayat Pelanggaran</p>
+        </div>
         {(myData?.logs?.length ?? 0) === 0 ? (
           <div className="text-center py-8">
             <Shield size={28} className="mx-auto text-muted/30 mb-3" />
             <p className="text-sm text-muted">Belum ada catatan pelanggaran</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {(myData?.logs ?? []).map((log: any) => {
-              const t = TYPE_MAP[log.type] ?? TYPE_MAP.TERLAMBAT;
-              const TIcon = t.icon;
-              return (
-                <div key={log.id} className="flex items-start gap-3 p-3 rounded-xl bg-foreground/[0.02] border border-border/50">
-                  <div className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
-                    log.type === 'TERLAMBAT' ? 'bg-warning/10' : log.type === 'ATRIBUT' ? 'bg-info/10' : 'bg-danger/10'
-                  )}>
-                    <TIcon size={15} className={cn(
-                      log.type === 'TERLAMBAT' ? 'text-warning' : log.type === 'ATRIBUT' ? 'text-info' : 'text-danger'
-                    )} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={cn('text-xs font-semibold', t.cls)}>{t.label}</span>
-                      <span className="text-[10px] text-muted">
-                        {new Date(log.date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-[18px] top-3 bottom-3 w-px bg-border" />
+            <div className="space-y-3">
+              {(myData?.logs ?? []).map((log: any, idx: number) => {
+                const t = TYPE_MAP[log.type] ?? TYPE_MAP.TERLAMBAT;
+                const TIcon = t.icon;
+                const dotColor = log.type === 'TERLAMBAT' ? 'bg-warning ring-warning/20' :
+                                 log.type === 'ATRIBUT' ? 'bg-info ring-info/20' : 'bg-danger ring-danger/20';
+                return (
+                  <div key={log.id} className="relative flex items-start gap-4 pl-10">
+                    {/* Timeline dot */}
+                    <div className={cn('absolute left-3.5 top-3 w-2.5 h-2.5 rounded-full ring-4 z-10', dotColor)} />
+                    <div className="flex-1 p-3 rounded-xl bg-foreground/[0.02] border border-border/50 hover:bg-foreground/[0.04] transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={cn('text-xs font-semibold', t.cls)}>{t.label}</span>
+                        <span className="text-[10px] text-muted">
+                          {new Date(log.date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      {log.notes
+                        ? <p className="text-sm text-muted-foreground">{log.notes}</p>
+                        : <p className="text-sm text-muted italic">Tidak ada catatan</p>}
                     </div>
-                    {log.notes
-                      ? <p className="text-sm text-muted-foreground">{log.notes}</p>
-                      : <p className="text-sm text-muted italic">Tidak ada catatan</p>}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -430,88 +446,143 @@ export default function DisciplinePage() {
       {/* SUMMARY TAB */}
       {tab === 'summary' && (
         <div className="space-y-6">
-          {/* Overview cards */}
+          {/* Overview cards - colorful gradient */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total', value: summary?.total ?? 0, icon: AlertTriangle },
-              ...(summary?.byType ?? []).map((t: any) => ({
-                label: TYPE_MAP[t.type]?.label ?? t.type,
-                value: t.count,
-                icon: TYPE_MAP[t.type]?.icon ?? AlertTriangle,
-              })),
+              { label: 'Total', value: summary?.total ?? 0, icon: AlertTriangle, gradient: 'stat-card-violet', iconBg: 'bg-violet-500', valueColor: 'stat-value-violet' },
+              ...(summary?.byType ?? []).map((t: any) => {
+                const cfg = t.type === 'TERLAMBAT'
+                  ? { gradient: 'stat-card-amber', iconBg: 'bg-amber-500', valueColor: 'stat-value-amber' }
+                  : t.type === 'ATRIBUT'
+                  ? { gradient: 'stat-card-blue', iconBg: 'bg-blue-500', valueColor: 'stat-value-blue' }
+                  : { gradient: 'stat-card-emerald', iconBg: 'bg-red-500', valueColor: 'stat-value-emerald' };
+                return {
+                  label: TYPE_MAP[t.type]?.label ?? t.type,
+                  value: t.count,
+                  icon: TYPE_MAP[t.type]?.icon ?? AlertTriangle,
+                  ...cfg,
+                };
+              }),
             ].map((card, i) => (
-              <div key={i} className="card">
-                <div className="flex items-center justify-between mb-3">
-                  <card.icon size={14} className="text-muted" strokeWidth={1.5} />
+              <div key={i} className={`stat-card ${card.gradient}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-10 h-10 rounded-xl ${card.iconBg} flex items-center justify-center shadow-lg`}>
+                    <card.icon size={18} strokeWidth={1.5} className="text-white" />
+                  </div>
                 </div>
-                <p className="text-xl font-bold text-foreground tracking-tight">{card.value}</p>
-                <p className="text-[11px] text-muted uppercase tracking-widest mt-1">{card.label}</p>
+                <p className={`text-2xl font-extrabold tracking-tight ${card.valueColor}`}>{card.value}</p>
+                <p className="text-[11px] stat-card-label uppercase tracking-wider mt-1 font-medium">{card.label}</p>
               </div>
             ))}
           </div>
 
-          {/* Top offenders */}
+          {/* Top offenders - enhanced */}
           <div className="card">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Siswa Terbanyak Pelanggaran</h3>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center">
+                  <TrendingUp size={15} className="text-danger" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Siswa Terbanyak Pelanggaran</h3>
+              </div>
+            </div>
             {loadingSummary ? (
               <div className="space-y-3">
-                {[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-foreground/[0.03] rounded-lg animate-pulse" />)}
+                {[...Array(5)].map((_, i) => <div key={i} className="h-14 bg-foreground/[0.03] rounded-xl animate-pulse" />)}
               </div>
             ) : (summary?.topStudents?.length ?? 0) > 0 ? (
-              <div className="space-y-1">
-                {summary.topStudents.map((ts: any, i: number) => (
-                  <div key={ts.studentId} className="flex items-center gap-3 p-3 rounded-lg hover:bg-foreground/[0.03] transition-colors">
-                    <span className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center text-[11px] font-bold text-accent shrink-0">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{ts.student?.fullName}</p>
-                      <p className="text-[11px] text-muted">{ts.student?.class?.name ?? '—'}</p>
+              <div className="space-y-2">
+                {summary.topStudents.map((ts: any, i: number) => {
+                  const colors = i === 0 ? 'bg-danger/10 text-danger border-danger/20' :
+                                 i === 1 ? 'bg-warning/10 text-warning border-warning/20' :
+                                 i === 2 ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                 'bg-foreground/[0.03] text-muted border-border/50';
+                  return (
+                    <div key={ts.studentId}
+                      className={cn('flex items-center gap-3 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-card cursor-pointer', colors)}
+                      onClick={() => setDetailId(ts.studentId)}>
+                      <span className={cn(
+                        'w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0',
+                        i === 0 ? 'bg-danger text-white' :
+                        i === 1 ? 'bg-warning text-white' :
+                        i === 2 ? 'bg-amber-500 text-white' :
+                        'bg-muted/20 text-muted'
+                      )}>
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{ts.student?.fullName}</p>
+                        <p className="text-[11px] text-muted">{ts.student?.class?.name ?? '—'}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-bold text-foreground">{ts._count.id}</p>
+                        <p className="text-[10px] text-muted uppercase tracking-wider">kali</p>
+                      </div>
                     </div>
-                    <span className="text-sm font-bold text-foreground">{ts._count.id}</span>
-                    <span className="text-[11px] text-muted">kali</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-center text-muted text-sm py-8">Belum ada data</p>
             )}
           </div>
 
-          {/* By class */}
+          {/* By class - enhanced with bars */}
           {summary?.byClass?.length > 0 && (
             <div className="card">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Per Kelas</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="th">Kelas</th>
-                      <th className="th text-right">Terlambat</th>
-                      <th className="th text-right">Atribut</th>
-                      <th className="th text-right">Perilaku</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const grouped: Record<string, Record<string, number>> = {};
-                      (summary.byClass ?? []).forEach((r: any) => {
-                        if (!grouped[r.class]) grouped[r.class] = {};
-                        grouped[r.class][r.type] = r.count;
-                      });
-                      return Object.entries(grouped)
-                        .sort(([a], [b]) => a.localeCompare(b))
-                        .map(([cls, types]) => (
-                          <tr key={cls} className="tr">
-                            <td className="td font-medium text-foreground">{cls}</td>
-                            <td className="td text-right text-muted-foreground">{types.TERLAMBAT ?? 0}</td>
-                            <td className="td text-right text-muted-foreground">{types.ATRIBUT ?? 0}</td>
-                            <td className="td text-right text-muted-foreground">{types.PERILAKU ?? 0}</td>
-                          </tr>
-                        ));
-                    })()}
-                  </tbody>
-                </table>
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <BarChart3 size={15} className="text-accent" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Pelanggaran Per Kelas</h3>
+              </div>
+              <div className="space-y-3">
+                {(() => {
+                  const grouped: Record<string, Record<string, number>> = {};
+                  (summary.byClass ?? []).forEach((r: any) => {
+                    if (!grouped[r.class]) grouped[r.class] = {};
+                    grouped[r.class][r.type] = r.count;
+                  });
+                  const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+                  const maxTotal = Math.max(...entries.map(([, types]) =>
+                    (types.TERLAMBAT ?? 0) + (types.ATRIBUT ?? 0) + (types.PERILAKU ?? 0)
+                  ), 1);
+
+                  return entries.map(([cls, types]) => {
+                    const total = (types.TERLAMBAT ?? 0) + (types.ATRIBUT ?? 0) + (types.PERILAKU ?? 0);
+                    const pct = (total / maxTotal) * 100;
+                    return (
+                      <div key={cls} className="group">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm font-medium text-foreground">{cls}</span>
+                          <span className="text-xs text-muted font-semibold">{total}</span>
+                        </div>
+                        <div className="flex h-2.5 rounded-full overflow-hidden bg-foreground/[0.04]">
+                          {types.TERLAMBAT > 0 && (
+                            <div className="bg-warning h-full transition-all duration-700" style={{ width: `${(types.TERLAMBAT / maxTotal) * 100}%` }} title={`Terlambat: ${types.TERLAMBAT}`} />
+                          )}
+                          {types.ATRIBUT > 0 && (
+                            <div className="bg-info h-full transition-all duration-700" style={{ width: `${(types.ATRIBUT / maxTotal) * 100}%` }} title={`Atribut: ${types.ATRIBUT}`} />
+                          )}
+                          {types.PERILAKU > 0 && (
+                            <div className="bg-danger h-full transition-all duration-700" style={{ width: `${(types.PERILAKU / maxTotal) * 100}%` }} title={`Perilaku: ${types.PERILAKU}`} />
+                          )}
+                        </div>
+                        <div className="flex gap-3 mt-1">
+                          {types.TERLAMBAT > 0 && <span className="text-[10px] text-warning font-medium">Terlambat: {types.TERLAMBAT}</span>}
+                          {types.ATRIBUT > 0 && <span className="text-[10px] text-info font-medium">Atribut: {types.ATRIBUT}</span>}
+                          {types.PERILAKU > 0 && <span className="text-[10px] text-danger font-medium">Perilaku: {types.PERILAKU}</span>}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border">
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-warning" /><span className="text-[10px] text-muted">Terlambat</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-info" /><span className="text-[10px] text-muted">Atribut</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-danger" /><span className="text-[10px] text-muted">Perilaku</span></div>
               </div>
             </div>
           )}

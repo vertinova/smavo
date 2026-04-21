@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight, Package, Wallet, GraduationCap, Users, FileText,
   ShieldAlert, BarChart3, CheckCircle2, Zap, Lock, ChevronDown,
   Sparkles, MousePointer2, Globe, Award, BookOpen, Building2,
-  MapPin, Phone, Mail, Star, Heart, Rocket,
+  MapPin, Phone, Mail, Star, Heart, Rocket, Download,
 } from 'lucide-react';
 
 /* ─── Data ─── */
@@ -111,6 +112,35 @@ export default function HomePage() {
   const whyRef = useReveal();
   const ctaRef = useReveal();
 
+  // PWA install prompt
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstalled(true);
+    }
+    setInstallPrompt(null);
+  };
+
   return (
     <div className="min-h-screen bg-[#f8faff] relative overflow-hidden">
       {/* ── Animated background shapes ── */}
@@ -133,11 +163,9 @@ export default function HomePage() {
 
       {/* ═══ NAVBAR ═══ */}
       <nav className="relative z-20 w-full animate-fade-up">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-              <span className="text-white font-bold text-base">S</span>
-            </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <Image src="/logo-smavo.jpeg" alt="SMAVO" width={40} height={40} className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-lg object-cover" />
             <div>
               <span className="text-slate-800 font-bold text-sm tracking-tight">SMAVO</span>
               <span className="hidden sm:block text-[10px] text-slate-400 tracking-widest uppercase">
@@ -145,12 +173,22 @@ export default function HomePage() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <a href="#tentang" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Tentang</a>
             <a href="#fitur" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Fitur</a>
+            {installPrompt && !isInstalled && (
+              <button
+                onClick={handleInstall}
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:scale-[1.03] transition-all duration-300"
+              >
+                <Download size={14} />
+                <span className="hidden sm:inline">Install App</span>
+                <span className="sm:hidden">Install</span>
+              </button>
+            )}
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2 rounded-full bg-white/80 backdrop-blur border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 shadow-sm hover:shadow-md transition-all duration-300"
+              className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 rounded-full bg-white/80 backdrop-blur border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 shadow-sm hover:shadow-md transition-all duration-300"
             >
               Masuk
               <ArrowRight size={14} />
@@ -160,8 +198,8 @@ export default function HomePage() {
       </nav>
 
       {/* ═══ HERO ═══ */}
-      <section className="relative z-10 pt-12 sm:pt-20 pb-16 sm:pb-28">
-        <div className="max-w-6xl mx-auto px-6 text-center">
+      <section className="relative z-10 pt-8 sm:pt-20 pb-12 sm:pb-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
           {/* Badge */}
           <div className="animate-fade-up inline-flex items-center gap-2.5 bg-white/80 backdrop-blur border border-indigo-100 rounded-full px-5 py-2 mb-8 shadow-sm">
             <Sparkles size={14} className="text-indigo-500" />
@@ -171,12 +209,12 @@ export default function HomePage() {
           </div>
 
           {/* Headline */}
-          <h1 className="animate-fade-up-delay-1 text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight leading-[1.1] mb-3">
+          <h1 className="animate-fade-up-delay-1 text-3xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight leading-[1.1] mb-2 sm:mb-3">
             <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-x">
               SMAVO
             </span>
           </h1>
-          <h2 className="animate-fade-up-delay-1 text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-800 mb-6">
+          <h2 className="animate-fade-up-delay-1 text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-800 mb-4 sm:mb-6">
             Super App
           </h2>
 
@@ -191,7 +229,7 @@ export default function HomePage() {
           </p>
 
           {/* CTA buttons */}
-          <div className="animate-fade-up-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="animate-fade-up-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Link
               href="/login"
               className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-8 py-3.5 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
@@ -207,15 +245,24 @@ export default function HomePage() {
               Tentang Kami
               <ChevronDown size={14} className="animate-bounce-gentle" />
             </a>
+            {installPrompt && !isInstalled && (
+              <button
+                onClick={handleInstall}
+                className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-full bg-white/90 backdrop-blur border border-indigo-200 text-indigo-600 shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 active:scale-[0.98]"
+              >
+                <Download size={15} />
+                Install Aplikasi
+              </button>
+            )}
           </div>
 
           {/* ── Dashboard preview mockup ── */}
-          <div className="animate-fade-up-delay-4 mt-14 sm:mt-20 max-w-4xl mx-auto">
+          <div className="animate-fade-up-delay-4 mt-10 sm:mt-20 max-w-4xl mx-auto">
             <div className="relative">
               {/* Glow behind */}
               <div className="absolute -inset-4 bg-gradient-to-r from-indigo-400/20 via-violet-400/20 to-purple-400/20 rounded-3xl blur-2xl" />
 
-              <div className="relative bg-white/80 backdrop-blur-sm border border-white/60 rounded-2xl p-2 shadow-2xl shadow-indigo-500/10">
+              <div className="relative bg-white/80 backdrop-blur-sm border border-white/60 rounded-2xl p-1.5 sm:p-2 shadow-2xl shadow-indigo-500/10">
                 <div className="bg-gradient-to-b from-slate-50 to-white rounded-xl border border-slate-100 overflow-hidden">
                   {/* Browser bar */}
                   <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-white/60">
@@ -309,8 +356,8 @@ export default function HomePage() {
       </section>
 
       {/* ═══ TENTANG SMAVO ═══ */}
-      <section id="tentang" ref={aboutRef} className="relative z-10 py-20 sm:py-28">
-        <div className="max-w-6xl mx-auto px-6">
+      <section id="tentang" ref={aboutRef} className="relative z-10 py-14 sm:py-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left — Text */}
             <div>
@@ -350,11 +397,9 @@ export default function HomePage() {
                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-violet-100 to-transparent rounded-tr-full" />
 
                 <div className="relative z-10">
-                  {/* School logo placeholder */}
+                  {/* School logo */}
                   <div className="flex items-center gap-4 mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                      <span className="text-white font-extrabold text-2xl">S</span>
-                    </div>
+                    <Image src="/logo-smavo.jpeg" alt="SMAVO" width={64} height={64} className="w-16 h-16 rounded-2xl shadow-lg object-cover" />
                     <div>
                       <h3 className="font-extrabold text-slate-800 text-lg">SMAN 2 Cibinong</h3>
                       <p className="text-sm text-slate-500">SMAVO &middot; Kab. Bogor</p>
@@ -389,7 +434,7 @@ export default function HomePage() {
 
       {/* ═══ SCHOOL FACTS ═══ */}
       <section ref={factsRef} className="relative z-10">
-        <div className="max-w-6xl mx-auto px-6 py-14">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <div className="bg-white/70 backdrop-blur border border-slate-100 rounded-3xl p-8 shadow-xl shadow-slate-200/30">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
               {SCHOOL_FACTS.map((s, i) => (
@@ -407,8 +452,8 @@ export default function HomePage() {
       </section>
 
       {/* ═══ WHAT IS SMAVO SUPER APP ═══ */}
-      <section className="relative z-10 py-16 sm:py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
+      <section className="relative z-10 py-12 sm:py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <div className="reveal bg-gradient-to-br from-indigo-50 via-violet-50 to-purple-50 border border-indigo-100/50 rounded-3xl p-8 sm:p-12 relative overflow-hidden">
             <div className="absolute top-[-20%] right-[-10%] w-40 h-40 rounded-full bg-indigo-200/30 blur-3xl" />
             <div className="absolute bottom-[-15%] left-[-8%] w-32 h-32 rounded-full bg-violet-200/30 blur-3xl" />
@@ -435,8 +480,8 @@ export default function HomePage() {
       </section>
 
       {/* ═══ MODULES / FEATURES ═══ */}
-      <section id="fitur" ref={featuresRef} className="relative z-10 py-20 sm:py-28">
-        <div className="max-w-6xl mx-auto px-6">
+      <section id="fitur" ref={featuresRef} className="relative z-10 py-14 sm:py-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="reveal inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-4">
               <Package size={12} className="text-indigo-500" />
@@ -473,8 +518,8 @@ export default function HomePage() {
       </section>
 
       {/* ═══ WHY SUPER APP ═══ */}
-      <section ref={whyRef} className="relative z-10 py-20 sm:py-28">
-        <div className="max-w-6xl mx-auto px-6">
+      <section ref={whyRef} className="relative z-10 py-14 sm:py-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <div className="reveal inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-4 py-1.5 mb-4">
               <Rocket size={12} className="text-emerald-500" />
@@ -506,8 +551,8 @@ export default function HomePage() {
       </section>
 
       {/* ═══ CTA ═══ */}
-      <section ref={ctaRef} className="relative z-10 py-20 sm:py-28">
-        <div className="max-w-3xl mx-auto px-6">
+      <section ref={ctaRef} className="relative z-10 py-14 sm:py-28">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <div className="reveal relative overflow-hidden rounded-3xl p-10 sm:p-14 text-center">
             {/* Gradient bg */}
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700" />
@@ -522,9 +567,7 @@ export default function HomePage() {
             />
 
             <div className="relative z-10">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur border border-white/30 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-black/10">
-                <span className="text-white font-extrabold text-2xl">S</span>
-              </div>
+              <Image src="/logo-smavo.jpeg" alt="SMAVO" width={64} height={64} className="w-16 h-16 rounded-2xl mx-auto mb-6 shadow-lg object-cover border-2 border-white/30" />
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-2">
                 SMAVO Super App
               </h2>
@@ -549,14 +592,12 @@ export default function HomePage() {
 
       {/* ═══ FOOTER ═══ */}
       <footer className="relative z-10 border-t border-slate-100 py-10 bg-white/40 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
             {/* Brand */}
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">S</span>
-                </div>
+                <Image src="/logo-smavo.jpeg" alt="SMAVO" width={36} height={36} className="w-9 h-9 rounded-lg object-cover" />
                 <div>
                   <span className="text-slate-800 font-bold text-sm">SMAVO Super App</span>
                 </div>

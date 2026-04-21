@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
@@ -21,6 +22,7 @@ export default function LoginPage() {
       localStorage.setItem('smavo_token', data.data.accessToken);
       localStorage.setItem('smavo_refresh_token', data.data.refreshToken);
       localStorage.setItem('smavo_user', JSON.stringify(data.data.user));
+      localStorage.removeItem('smavo_pw_changed');
       toast.success('Berhasil masuk!');
       router.push('/dashboard');
     } catch (err: any) {
@@ -42,13 +44,11 @@ export default function LoginPage() {
       />
 
       {/* Corner logo */}
-      <div className="fixed top-8 left-8 flex items-center gap-3 z-20">
-        <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-          <span className="text-accent font-bold text-sm">S</span>
-        </div>
+      <div className="fixed top-6 left-6 sm:top-8 sm:left-8 flex items-center gap-2.5 sm:gap-3 z-20">
+        <Image src="/logo-smavo.jpeg" alt="SMAVO" width={36} height={36} className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover shadow-md" />
         <div>
-          <span className="text-foreground font-bold text-sm tracking-tight">SMAVO</span>
-          <span className="block text-[10px] text-muted tracking-widest uppercase">SMAN 2 Cibinong</span>
+          <span className="text-foreground font-bold text-xs sm:text-sm tracking-tight">SMAVO</span>
+          <span className="block text-[9px] sm:text-[10px] text-muted tracking-widest uppercase">SMAN 2 Cibinong</span>
         </div>
       </div>
 
