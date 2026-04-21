@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -6,23 +6,15 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY prisma ./prisma
-RUN npx prisma generate
-
-COPY tsconfig.json ./
+COPY prisma.config.ts ./
 COPY src ./src
 
-RUN npx tsc
-
-FROM node:20-alpine AS production
-WORKDIR /app
-
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/prisma ./prisma
-COPY --from=base /app/package.json ./
+ARG DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
+ENV DATABASE_URL=$DATABASE_URL
+RUN npx prisma generate
 
 RUN mkdir -p uploads
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx src/server.ts"]

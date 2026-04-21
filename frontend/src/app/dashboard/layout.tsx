@@ -71,14 +71,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-40 w-[260px] sidebar-surface border-r border-border flex flex-col',
+        'fixed inset-y-0 left-0 z-40 w-[220px] sidebar-surface border-r border-border flex flex-col',
         'transition-transform duration-300 lg:translate-x-0 lg:static',
         open ? 'translate-x-0' : '-translate-x-full'
       )}>
         {/* Brand */}
-        <div className="flex items-center gap-3 px-6 h-16 shrink-0 border-b border-border">
-          <div className="w-9 h-9 rounded-xl sidebar-brand-icon flex items-center justify-center shadow-md">
-            <span className="text-white font-bold text-sm">S</span>
+        <div className="flex items-center gap-3 px-4 h-14 shrink-0 border-b border-border">
+          <div className="w-8 h-8 rounded-lg sidebar-brand-icon flex items-center justify-center shadow-md">
+            <span className="text-white font-bold text-xs">S</span>
           </div>
           <div className="flex-1">
             <span className="text-foreground font-bold text-sm tracking-tight leading-none">SMAVO</span>
@@ -92,8 +92,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 pt-4 pb-4 space-y-0.5 overflow-y-auto">
-          <p className="px-3 mb-2 text-[10px] font-semibold text-muted uppercase tracking-widest">Menu</p>
+        <nav className="flex-1 px-2 pt-3 pb-3 space-y-0.5 overflow-y-auto">
+          <p className="px-3 mb-1.5 text-[9px] font-semibold text-muted uppercase tracking-widest">Menu</p>
           {NAV.filter(item => !('adminOnly' in item) || user?.role === 'ADMIN').map((item) => {
             const active = pathname === item.href;
             return (
@@ -102,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  'relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200',
+                  'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-200',
                   active
                     ? 'sidebar-nav-active'
                     : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]'
@@ -119,10 +119,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* User */}
-        <div className="px-3 py-3 border-t border-border">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-xl sidebar-user-avatar flex items-center justify-center shrink-0">
-              <span className="text-white text-[11px] font-bold">{initials}</span>
+        <div className="px-2 py-2 border-t border-border">
+          <div className="flex items-center gap-2.5 px-3 py-1.5">
+            <div className="w-7 h-7 rounded-lg sidebar-user-avatar flex items-center justify-center shrink-0">
+              <span className="text-white text-[10px] font-bold">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground truncate">{user?.fullName || '...'}</p>
@@ -133,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <button
             onClick={logout}
-            className="flex items-center gap-2 px-3 py-2 mt-1 w-full rounded-xl text-[13px]
+            className="flex items-center gap-2 px-3 py-1.5 mt-0.5 w-full rounded-lg text-[12px]
                        text-muted hover:text-danger hover:bg-danger-muted transition-all"
           >
             <LogOut size={15} />
@@ -149,7 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border h-16 flex items-center px-4 lg:px-8 gap-4 shrink-0">
+        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border h-12 flex items-center px-4 lg:px-6 gap-4 shrink-0">
           <button className="lg:hidden text-muted hover:text-foreground transition-colors" onClick={() => setOpen(true)}>
             <Menu size={18} />
           </button>
@@ -183,7 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-5 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           {children}
         </main>
       </div>

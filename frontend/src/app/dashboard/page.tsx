@@ -36,14 +36,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-5 animate-fadeIn">
       {/* Greeting */}
       <div>
-        <p className="text-xs text-muted uppercase tracking-widest mb-1.5 flex items-center gap-2">
+        <p className="text-xs text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
           <Sparkles size={12} className="text-accent" />
           {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())}
         </p>
-        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+        <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
           <span className="greeting-text">
             {greeting()}, {user?.fullName?.split(' ')[0] || 'User'}
           </span>
@@ -66,14 +66,14 @@ export default function DashboardPage() {
               </div>
               <ArrowUpRight size={14} className="stat-card-arrow group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </div>
-            <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${card.valueColor}`}>{card.value}</p>
-            <p className="text-xs stat-card-label uppercase tracking-wider mt-1.5 font-medium">{card.label}</p>
+            <p className={`text-xl sm:text-2xl font-extrabold tracking-tight ${card.valueColor}`}>{card.value}</p>
+            <p className="text-[11px] stat-card-label uppercase tracking-wider mt-1 font-medium">{card.label}</p>
           </Link>
         ))}
       </div>
 
       {/* Two-column */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Budget */}
         <div className="lg:col-span-2 card">
           <div className="flex items-center justify-between mb-6">

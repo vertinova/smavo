@@ -170,7 +170,7 @@
 
   /* ─── Cards ───────────────────── */
   .card {
-    @apply bg-card rounded-xl border border-border p-6;
+    @apply bg-card rounded-xl border border-border p-4;
   }
 
   .card-interactive {
@@ -257,7 +257,7 @@
 .greeting-text { background: linear-gradient(to right, rgb(var(--foreground)), rgb(var(--muted-foreground))); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
 /* ─── Stat Cards (default/dark/colorful) ─── */
-.stat-card { @apply rounded-xl border border-border p-5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5; }
+.stat-card { @apply rounded-xl border border-border p-4 cursor-pointer transition-all duration-200 hover:-translate-y-0.5; }
 .stat-card-arrow { color: rgb(var(--muted) / 0.5); }
 .stat-card-label { color: rgb(var(--muted)); }
 .stat-value-blue { color: rgb(var(--info)); }
