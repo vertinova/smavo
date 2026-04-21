@@ -249,7 +249,7 @@ function AdminDashboard({ user }: { user: any }) {
   // Build stat cards based on role access
   const statCards = [
     canSeeAssets && { label: 'Total Aset', value: isLoading ? '—' : s?.totalAssets?.toLocaleString('id-ID') ?? '0', icon: Package, href: '/dashboard/assets', gradient: 'stat-card-blue', iconBg: 'bg-blue-500', valueColor: 'stat-value-blue' },
-    canSeeFinance && { label: 'Anggaran', value: isLoading ? '—' : formatCompact(s?.totalBudget ?? 0), icon: Wallet, href: '/dashboard/finance', gradient: 'stat-card-emerald', iconBg: 'bg-emerald-500', valueColor: 'stat-value-emerald' },
+    canSeeFinance && { label: 'Anggaran', value: isLoading ? '—' : formatCurrency(s?.totalBudget ?? 0), icon: Wallet, href: '/dashboard/finance', gradient: 'stat-card-emerald', iconBg: 'bg-emerald-500', valueColor: 'stat-value-emerald' },
     canSeeStudents && { label: 'Siswa', value: isLoading ? '—' : s?.totalStudents?.toLocaleString('id-ID') ?? '0', icon: GraduationCap, href: '/dashboard/students', gradient: 'stat-card-violet', iconBg: 'bg-violet-500', valueColor: 'stat-value-violet' },
     canSeeTeachers && { label: 'Guru', value: isLoading ? '—' : s?.totalTeachers?.toLocaleString('id-ID') ?? '0', icon: Users, href: '/dashboard/teachers', gradient: 'stat-card-amber', iconBg: 'bg-amber-500', valueColor: 'stat-value-amber' },
     canSeeDiscipline && { label: 'Kedisiplinan', value: isLoading ? '—' : s?.totalDisciplineLogs?.toLocaleString('id-ID') ?? '0', icon: ShieldAlert, href: '/dashboard/discipline', gradient: 'stat-card-blue', iconBg: 'bg-red-500', valueColor: 'stat-value-blue' },
@@ -283,7 +283,7 @@ function AdminDashboard({ user }: { user: any }) {
                 </div>
                 <ArrowUpRight size={14} className="stat-card-arrow group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </div>
-              <p className={`text-lg sm:text-2xl font-extrabold tracking-tight ${card.valueColor} truncate`}>{card.value}</p>
+              <p className={`text-sm sm:text-xl font-extrabold tracking-tight ${card.valueColor} truncate leading-tight`}>{card.value}</p>
               <p className="text-[10px] sm:text-[11px] stat-card-label uppercase tracking-wider mt-1 font-medium">{card.label}</p>
             </Link>
           ))}
