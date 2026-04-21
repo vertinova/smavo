@@ -14,6 +14,7 @@ enum Role {
   BENDAHARA
   GURU
   STAF_TU
+  SISWA
 }
 
 enum KIBType {
@@ -102,14 +103,15 @@ enum LetterType {
 // ─── AUTH & USER ────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String
-  role          Role     @default(STAF_TU)
-  isActive      Boolean  @default(true)
-  refreshToken  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String
+  role            Role     @default(STAF_TU)
+  isActive        Boolean  @default(true)
+  allowedFeatures String[]
+  refreshToken    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   profile       Profile?
   expenses      Expense[]

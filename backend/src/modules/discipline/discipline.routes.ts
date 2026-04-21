@@ -48,15 +48,38 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       prisma.disciplineLog.count({ where }),
     ]);
 
+    // Attach student total violation count + card status
+    const studentIds = [...new Set(logs.map(l => l.studentId))];
+    const counts = await prisma.disciplineLog.groupBy({
+      by: ['studentId'],
+      where: { studentId: { in: studentIds } },
+      _count: { id: true },
+    });
+    const countMap = Object.fromEntries(counts.map(c => [c.studentId, c._count.id]));
+
+    const logsWithCard = logs.map(l => ({
+      ...l,
+      studentTotalViolations: countMap[l.studentId] ?? 0,
+      cardStatus: getCardStatus(countMap[l.studentId] ?? 0),
+    }));
+
     res.json({
       success: true,
-      data: logs,
+      data: logsWithCard,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
     next(err);
   }
 });
+
+// Helper: compute card status based on total violations
+function getCardStatus(total: number): { card: string; color: string; action: string } | null {
+  if (total === 0) return null;
+  if (total <= 3) return { card: 'Kartu Hijau', color: 'green', action: 'Pembinaan Wali Kelas' };
+  if (total <= 6) return { card: 'Kartu Kuning', color: 'yellow', action: 'Pembinaan Wali Kelas' };
+  return { card: 'Kartu Merah', color: 'red', action: 'Pembinaan BK, Wakasek Kesiswaan & Orang Tua' };
+}
 
 // GET /api/discipline/student/:studentId — all violations for a student
 router.get('/student/:studentId', async (req: Request, res: Response, next: NextFunction) => {
@@ -81,6 +104,8 @@ router.get('/student/:studentId', async (req: Request, res: Response, next: Next
       _count: { id: true },
     });
 
+    const cardStatus = getCardStatus(logs.length);
+
     res.json({
       success: true,
       data: {
@@ -88,6 +113,7 @@ router.get('/student/:studentId', async (req: Request, res: Response, next: Next
         logs,
         total: logs.length,
         byType: byType.map(b => ({ type: b.type, count: b._count.id })),
+        cardStatus,
       },
     });
   } catch (err) {

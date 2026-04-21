@@ -94,6 +94,94 @@ async function main() {
     )
   );
 
+  // ─── REAL TEACHERS (from CSV) ─────────────────────────
+  const realTeacherData = [
+    { code: 1,  name: 'Hj. Elis Nurhayati, M.Pd',           subject: 'B. Inggris',            gender: Gender.PEREMPUAN },
+    { code: 2,  name: 'Hj. Tintin Sugiharti, S.Pd., M.Pd.', subject: 'Kimia',                 gender: Gender.PEREMPUAN },
+    { code: 3,  name: 'Heni Handayani, M.Pd.',               subject: 'B. Indonesia',           gender: Gender.PEREMPUAN },
+    { code: 4,  name: 'Rr. Rara Tatra Sudhawati, M.Pd.',     subject: 'Matematika',             gender: Gender.PEREMPUAN },
+    { code: 5,  name: 'Ilmia Fathonah, S.Pd., M.Pd.',        subject: 'Sejarah',               gender: Gender.PEREMPUAN },
+    { code: 6,  name: 'Dra. Dwi Kartika Rini',               subject: 'Matematika',             gender: Gender.PEREMPUAN },
+    { code: 7,  name: 'Hj. Sri Rohayati, M.Pd.',             subject: 'Biologi',               gender: Gender.PEREMPUAN },
+    { code: 8,  name: 'Diyah Nursela, S.Pd.',                subject: 'Penjasorkes',            gender: Gender.PEREMPUAN },
+    { code: 9,  name: 'Dra. Nani Suryani, M.Pd.',            subject: 'B. Inggris',            gender: Gender.PEREMPUAN },
+    { code: 10, name: 'Margaretha S., S.Pd.',                 subject: 'Fisika',                gender: Gender.PEREMPUAN },
+    { code: 11, name: 'Dra. Kristiana K., M.Pd.',             subject: 'Biologi',               gender: Gender.PEREMPUAN },
+    { code: 12, name: 'Helfy M. Ilfa, S.Pd., M.Pd.',         subject: 'B. Indonesia',           gender: Gender.PEREMPUAN },
+    { code: 13, name: 'Dra. Sapmi Rahmawati, M.Pd.',         subject: 'B. Perancis',            gender: Gender.PEREMPUAN },
+    { code: 14, name: 'Fadjar Djaja W., S.Pd.',              subject: 'Seni Budaya',            gender: Gender.LAKI_LAKI },
+    { code: 15, name: 'Cony Nugraheni, S.Pd.',               subject: 'Biologi',               gender: Gender.PEREMPUAN },
+    { code: 16, name: 'Dra. Sumitri, M.Pd.',                 subject: 'Fisika',                gender: Gender.PEREMPUAN },
+    { code: 17, name: 'Elita Sari, S.Pd.',                   subject: 'Seni Budaya',            gender: Gender.PEREMPUAN },
+    { code: 18, name: 'Hj. Srie Endang Wigati, M.Pd.',       subject: 'B. Inggris',            gender: Gender.PEREMPUAN },
+    { code: 19, name: 'Dwi Rokhmiyatun, S.Pd.',              subject: 'PPKn',                  gender: Gender.PEREMPUAN },
+    { code: 20, name: 'Dijah Noeringtyas, M.Pd.',            subject: 'B. Inggris',            gender: Gender.PEREMPUAN },
+    { code: 21, name: 'Wawan Kurniawan, S.Sos.',             subject: 'Sosiologi',             gender: Gender.LAKI_LAKI },
+    { code: 22, name: 'Lina Yudiastuti, S.Si.',              subject: 'Fisika',                gender: Gender.PEREMPUAN },
+    { code: 23, name: 'Tatat Rahmalia, S.Pd., M.Pd.',        subject: 'B. Perancis',            gender: Gender.PEREMPUAN },
+    { code: 24, name: 'Yanuarita Nur Hanifa, S.Pd.',         subject: 'Sosiologi/Antropologi',  gender: Gender.PEREMPUAN },
+    { code: 25, name: 'Teguh Satya Pratama, S.Pd.',          subject: 'Penjasorkes',            gender: Gender.LAKI_LAKI },
+    { code: 26, name: 'Ramlan Sulthon, S.Pd.I.',             subject: 'Agama Islam',            gender: Gender.LAKI_LAKI },
+    { code: 27, name: 'Rizki, S.Pd.',                        subject: 'Matematika',             gender: Gender.LAKI_LAKI },
+    { code: 28, name: 'Ari Aryanto, S.Pd.',                  subject: 'BK',                    gender: Gender.LAKI_LAKI },
+    { code: 29, name: 'Ranti Mustika, S.Pd.',                subject: 'Bahasa Inggris',         gender: Gender.PEREMPUAN },
+    { code: 30, name: 'Rudi Zaenudin, S.Kom.',               subject: 'Informatika',            gender: Gender.LAKI_LAKI },
+    { code: 31, name: 'Artanti, S.Si.',                      subject: 'Biologi/PKWU',           gender: Gender.PEREMPUAN },
+    { code: 32, name: 'M. Yusuf, S.Pd.',                     subject: 'Sejarah',               gender: Gender.LAKI_LAKI },
+    { code: 33, name: 'Raharjo, S.Pd., M.Pd.',               subject: 'Matematika',             gender: Gender.LAKI_LAKI },
+    { code: 34, name: 'Airis Rizkia, S.Pd.',                 subject: 'B. Indonesia',           gender: Gender.PEREMPUAN },
+    { code: 35, name: 'Masitoh Noer, S.Pd.',                 subject: 'BK',                    gender: Gender.PEREMPUAN },
+    { code: 36, name: 'Nurlaela, S.Si.',                     subject: 'Matematika',             gender: Gender.PEREMPUAN },
+    { code: 37, name: 'Muthia Nurhidayah Ashfaar, S.H., M.H.', subject: 'BK',                 gender: Gender.PEREMPUAN },
+    { code: 38, name: 'Syamsi Jawawi Wahyudi, S.Pd.',        subject: 'Sejarah',               gender: Gender.LAKI_LAKI },
+    { code: 39, name: 'Ichsan, S.Pd.',                       subject: 'Penjasorkes',            gender: Gender.LAKI_LAKI },
+    { code: 40, name: 'Mariyana Septi Nugraheni, S.Pd.',     subject: 'BK',                    gender: Gender.PEREMPUAN },
+    { code: 41, name: 'Nur Adillawati, M.Pd.',               subject: 'Informatika',            gender: Gender.PEREMPUAN },
+    { code: 42, name: 'Dwi Lestari, S.Pd.',                  subject: 'PKWU',                  gender: Gender.PEREMPUAN },
+    { code: 43, name: 'Dewi Rahmawati, S.Pd.',               subject: 'B. Indonesia',           gender: Gender.PEREMPUAN },
+    { code: 44, name: 'Dini Nurhasanah, S.Pd.',              subject: 'B. Indonesia',           gender: Gender.PEREMPUAN },
+    { code: 45, name: 'Imania Bidari, S.Pd.',                subject: 'Matematika',             gender: Gender.PEREMPUAN },
+    { code: 46, name: 'Aripudin, S.Pd.',                     subject: 'Penjasorkes',            gender: Gender.LAKI_LAKI },
+    { code: 47, name: 'Fatmawati, S.Pd.I.',                  subject: 'Agama Islam',            gender: Gender.PEREMPUAN },
+    { code: 48, name: 'Fatasya Kamal, S.Pd.',                subject: 'Kimia/PAI',              gender: Gender.PEREMPUAN },
+    { code: 49, name: 'Selly Amalia, M.Pd.',                 subject: 'B. Sunda',              gender: Gender.PEREMPUAN },
+    { code: 50, name: 'Rahmalia Dewi',                       subject: 'Geografi',              gender: Gender.PEREMPUAN },
+    { code: 51, name: 'Dian Haerunnisa, S.Pd.',              subject: 'PKWU',                  gender: Gender.PEREMPUAN },
+    { code: 52, name: 'Ahmad Tirtayasa, M.Pd.',              subject: 'Sosiologi/Informatika',  gender: Gender.LAKI_LAKI },
+    { code: 53, name: 'Yanti Kurniati, S.Pd.',               subject: 'PKn',                   gender: Gender.PEREMPUAN },
+    { code: 54, name: 'Deden Hasanah, S.E.',                 subject: 'Ekonomi',               gender: Gender.LAKI_LAKI },
+    { code: 55, name: 'Eva Fauziah, S.Pd.',                  subject: 'Matematika',             gender: Gender.PEREMPUAN },
+    { code: 56, name: 'Neng Santi',                          subject: 'B. Inggris',            gender: Gender.PEREMPUAN },
+    { code: 57, name: 'Sari Rahayu Hidayat, S.Pd.',          subject: 'B. Indonesia',           gender: Gender.PEREMPUAN },
+    { code: 58, name: 'Muhammad, S.Pd.',                     subject: 'Agama Islam/Biologi',    gender: Gender.LAKI_LAKI },
+    { code: 59, name: 'Heri Wibowo, S.Pd.',                  subject: 'Agama Kristen/PKWU',     gender: Gender.LAKI_LAKI },
+    { code: 60, name: 'Ai Siti R., S.Hum.',                  subject: 'B. Sunda',              gender: Gender.PEREMPUAN },
+    { code: 61, name: 'Rini Candra, S.Pd.',                  subject: 'Ekonomi',               gender: Gender.PEREMPUAN },
+    { code: 62, name: 'Rafika, S.Pd.',                       subject: 'PKn',                   gender: Gender.PEREMPUAN },
+    { code: 63, name: 'Yunita Eka Refitasari, S.Pd.',        subject: 'BK',                    gender: Gender.PEREMPUAN },
+    { code: 64, name: 'Reiska Putri, S.Pd.',                 subject: 'Sosiologi/PKWU',         gender: Gender.PEREMPUAN },
+    { code: 65, name: 'Fitria Pelangi',                      subject: 'Kimia',                 gender: Gender.PEREMPUAN },
+    { code: 66, name: 'Rebecca',                             subject: 'B. Inggris',            gender: Gender.PEREMPUAN },
+  ];
+
+  const realTeachers: any[] = [];
+  for (const t of realTeacherData) {
+    const syntheticNip = `SMAVO-${String(t.code).padStart(3, '0')}`;
+    const teacher = await prisma.teacher.upsert({
+      where: { nip: syntheticNip },
+      update: { fullName: t.name, subject: t.subject, gender: t.gender },
+      create: {
+        nip: syntheticNip,
+        fullName: t.name,
+        subject: t.subject,
+        gender: t.gender,
+        isActive: true,
+      },
+    });
+    realTeachers.push({ ...teacher, code: t.code });
+  }
+  console.log(`   Real Teachers: ${realTeachers.length}`);
+
   // ─── CLASSES ──────────────────────────────────────────
   const classData = [
     { name: 'X-MIPA-1', grade: 10, academicYear: '2025/2026', homeroomId: teachers[0].id },
@@ -506,10 +594,62 @@ async function main() {
   }
 
   console.log('✅ Seeding completed!');
+
+  // ─── TEACHER ACCOUNTS ──────────────────────────────────
+  console.log('👤 Creating teacher accounts...');
+  const guruPassword = await bcrypt.hash('guru123', 12);
+  let teacherAccountCount = 0;
+
+  for (const t of realTeachers) {
+    const email = `guru${t.code}@smavo.sch.id`;
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (!existing) {
+      await prisma.user.create({
+        data: {
+          email,
+          password: guruPassword,
+          role: Role.GURU,
+          allowedFeatures: ['students', 'discipline', 'letters', 'teachers'],
+          profile: { create: { fullName: t.fullName, nip: t.nip } },
+        },
+      });
+      teacherAccountCount++;
+    }
+  }
+  console.log(`   Teacher accounts created: ${teacherAccountCount}`);
+
+  // ─── STUDENT ACCOUNTS ──────────────────────────────────
+  console.log('🎓 Creating student accounts...');
+  const siswaPassword = await bcrypt.hash('siswa123', 12);
+  let studentAccountCount = 0;
+
+  const allStudentsForAccounts = await prisma.student.findMany({
+    where: { isActive: true },
+    select: { id: true, nisn: true, fullName: true },
+    take: 750,
+  });
+
+  for (const s of allStudentsForAccounts) {
+    const email = `siswa.${s.nisn}@smavo.sch.id`;
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (!existing) {
+      await prisma.user.create({
+        data: {
+          email,
+          password: siswaPassword,
+          role: Role.SISWA,
+          allowedFeatures: ['discipline'],
+          profile: { create: { fullName: s.fullName } },
+        },
+      });
+      studentAccountCount++;
+    }
+  }
+  console.log(`   Student accounts created: ${studentAccountCount}`);
+
   console.log(`   Users    : admin, bendahara, guru, tu (password: admin123)`);
-  console.log(`   Teachers : ${teachers.length}`);
-  console.log(`   Classes  : ${classes.length} + ${Object.keys(realClasses).length} real`);
-  console.log(`   Students : ${studentCreates.length} dummy + ${realStudentCount} real`);
+  console.log(`   Teachers : ${teachers.length} dummy + ${realTeachers.length} real (password: guru123)`);
+  console.log(`   Students : ${studentCreates.length} dummy + ${realStudentCount} real (password: siswa123)`);
   console.log(`   Assets   : ${assets.length}`);
   console.log(`   Expenses : ${expenseData.length}`);
   console.log(`   Letters  : ${letterData.length}`);

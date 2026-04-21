@@ -12,12 +12,12 @@ import { useTheme, type Theme } from '@/lib/theme';
 
 const NAV = [
   { name: 'Ringkasan', href: '/dashboard', icon: LayoutGrid },
-  { name: 'Inventaris Aset', href: '/dashboard/assets', icon: Package },
-  { name: 'Keuangan BOS', href: '/dashboard/finance', icon: Wallet },
-  { name: 'Data Siswa', href: '/dashboard/students', icon: GraduationCap },
-  { name: 'Data Guru', href: '/dashboard/teachers', icon: Users },
-  { name: 'Persuratan', href: '/dashboard/letters', icon: FileText },
-  { name: 'Kedisiplinan', href: '/dashboard/discipline', icon: ShieldAlert },
+  { name: 'Inventaris Aset', href: '/dashboard/assets', icon: Package, feature: 'assets' },
+  { name: 'Keuangan BOS', href: '/dashboard/finance', icon: Wallet, feature: 'finance' },
+  { name: 'Data Siswa', href: '/dashboard/students', icon: GraduationCap, feature: 'students' },
+  { name: 'Data Guru', href: '/dashboard/teachers', icon: Users, feature: 'teachers' },
+  { name: 'Persuratan', href: '/dashboard/letters', icon: FileText, feature: 'letters' },
+  { name: 'Kedisiplinan', href: '/dashboard/discipline', icon: ShieldAlert, feature: 'discipline' },
   { name: 'Akun & Role', href: '/dashboard/users', icon: UserCog, adminOnly: true },
 ];
 
@@ -94,7 +94,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Nav */}
         <nav className="flex-1 px-2 pt-3 pb-3 space-y-0.5 overflow-y-auto">
           <p className="px-3 mb-1.5 text-[9px] font-semibold text-muted uppercase tracking-widest">Menu</p>
-          {NAV.filter(item => !('adminOnly' in item) || user?.role === 'ADMIN').map((item) => {
+          {NAV.filter(item => {
+            if ('adminOnly' in item) return user?.role === 'ADMIN';
+            if (!('feature' in item)) return true; // dashboard, no feature required
+            if (user?.role === 'ADMIN') return true; // admin sees all
+            return (user?.allowedFeatures ?? []).includes(item.feature!);
+          }).map((item) => {
             const active = pathname === item.href;
             return (
               <Link

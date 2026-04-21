@@ -200,14 +200,21 @@ export default function DisciplinePage() {
                     </td></tr>
                   ) : list.map((log: any) => {
                     const t = TYPE_MAP[log.type] ?? TYPE_MAP.TERLAMBAT;
+                    const card = log.cardStatus;
+                    const cardDot = card?.color === 'green' ? '🟢' : card?.color === 'yellow' ? '🟡' : card?.color === 'red' ? '🔴' : null;
                     return (
                       <tr key={log.id} className="tr cursor-pointer" onClick={() => setDetailId(log.student?.id)}>
                         <td className="td text-muted text-xs">
                           {new Date(log.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </td>
                         <td className="td">
-                          <p className="font-medium text-foreground">{log.student?.fullName}</p>
-                          <p className="text-[11px] text-muted">{log.student?.nisn}</p>
+                          <div className="flex items-center gap-1.5">
+                            {cardDot && <span className="text-sm leading-none" title={card?.card}>{cardDot}</span>}
+                            <div>
+                              <p className="font-medium text-foreground">{log.student?.fullName}</p>
+                              <p className="text-[11px] text-muted">{log.student?.nisn}</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="td text-muted-foreground">{log.student?.class?.name ?? '—'}</td>
                         <td className="td"><span className={t.cls}>{t.label}</span></td>
@@ -440,13 +447,45 @@ export default function DisciplinePage() {
                   </div>
 
                   {/* Summary badges */}
-                  <div className="flex flex-wrap gap-2 mb-2">
+                  <div className="flex flex-wrap gap-2 mb-3">
                     <span className="badge-neutral">Total: {detail.total} pelanggaran</span>
                     {detail.byType?.map((t: any) => {
                       const tm = TYPE_MAP[t.type] ?? TYPE_MAP.TERLAMBAT;
                       return <span key={t.type} className={tm.cls}>{tm.label}: {t.count}</span>;
                     })}
                   </div>
+
+                  {/* Card Status */}
+                  {detail.cardStatus ? (
+                    <div className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-xl border-2 mb-1',
+                      detail.cardStatus.color === 'green' && 'border-green-500/40 bg-green-500/10',
+                      detail.cardStatus.color === 'yellow' && 'border-yellow-500/40 bg-yellow-500/10',
+                      detail.cardStatus.color === 'red' && 'border-red-500/40 bg-red-500/10',
+                    )}>
+                      <div className={cn(
+                        'w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shrink-0',
+                        detail.cardStatus.color === 'green' && 'bg-green-500/20 text-green-600',
+                        detail.cardStatus.color === 'yellow' && 'bg-yellow-500/20 text-yellow-600',
+                        detail.cardStatus.color === 'red' && 'bg-red-500/20 text-red-600',
+                      )}>
+                        {detail.cardStatus.color === 'green' ? '🟢' : detail.cardStatus.color === 'yellow' ? '🟡' : '🔴'}
+                      </div>
+                      <div>
+                        <p className={cn(
+                          'font-bold text-sm',
+                          detail.cardStatus.color === 'green' && 'text-green-700 dark:text-green-400',
+                          detail.cardStatus.color === 'yellow' && 'text-yellow-700 dark:text-yellow-400',
+                          detail.cardStatus.color === 'red' && 'text-red-700 dark:text-red-400',
+                        )}>{detail.cardStatus.card}</p>
+                        <p className="text-xs text-muted">{detail.cardStatus.action}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-foreground/[0.02] border border-border">
+                      <span className="text-sm text-muted">Belum ada pelanggaran</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Logs list */}

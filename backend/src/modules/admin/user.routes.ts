@@ -9,22 +9,26 @@ import { z } from 'zod';
 const router = Router();
 router.use(authenticate, authorize('ADMIN'));
 
+const VALID_FEATURES = ['assets', 'finance', 'students', 'teachers', 'letters', 'discipline'] as const;
+
 const createUserSchema = z.object({
   email: z.string().email('Email tidak valid'),
   password: z.string().min(6, 'Password minimal 6 karakter'),
   fullName: z.string().min(2, 'Nama lengkap minimal 2 karakter'),
-  role: z.enum(['ADMIN', 'BENDAHARA', 'GURU', 'STAF_TU']),
+  role: z.enum(['ADMIN', 'BENDAHARA', 'GURU', 'STAF_TU', 'SISWA']),
   nip: z.string().optional(),
   phone: z.string().optional(),
+  allowedFeatures: z.array(z.enum(VALID_FEATURES)).optional(),
 });
 
 const updateUserSchema = z.object({
   email: z.string().email().optional(),
   fullName: z.string().min(2).optional(),
-  role: z.enum(['ADMIN', 'BENDAHARA', 'GURU', 'STAF_TU']).optional(),
+  role: z.enum(['ADMIN', 'BENDAHARA', 'GURU', 'STAF_TU', 'SISWA']).optional(),
   nip: z.string().optional(),
   phone: z.string().optional(),
   isActive: z.boolean().optional(),
+  allowedFeatures: z.array(z.enum(VALID_FEATURES)).optional(),
 });
 
 const changePasswordSchema = z.object({
@@ -60,6 +64,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
           email: true,
           role: true,
           isActive: true,
+          allowedFeatures: true,
           createdAt: true,
           updatedAt: true,
           profile: { select: { fullName: true, nip: true, phone: true } },
@@ -103,7 +108,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 // POST /api/users
 router.post('/', validate(createUserSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, fullName, role, nip, phone } = req.body;
+    const { email, password, fullName, role, nip, phone, allowedFeatures } = req.body;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) throw new AppError('Email sudah digunakan', 409);
@@ -120,6 +125,7 @@ router.post('/', validate(createUserSchema), async (req: Request, res: Response,
         email,
         password: hashedPassword,
         role,
+        allowedFeatures: role === 'ADMIN' ? [] : (allowedFeatures ?? []),
         profile: { create: { fullName, nip: nip || null, phone: phone || null } },
       },
       select: {
@@ -127,6 +133,7 @@ router.post('/', validate(createUserSchema), async (req: Request, res: Response,
         email: true,
         role: true,
         isActive: true,
+        allowedFeatures: true,
         createdAt: true,
         profile: { select: { fullName: true, nip: true, phone: true } },
       },
@@ -164,12 +171,15 @@ router.patch('/:id', validate(updateUserSchema), async (req: Request, res: Respo
       if (nipExists) throw new AppError('NIP sudah digunakan', 409);
     }
 
+    const { allowedFeatures } = req.body;
+
     const user = await prisma.user.update({
       where: { id: req.params.id as string },
       data: {
         ...(email && { email }),
         ...(role && { role }),
         ...(isActive !== undefined && { isActive }),
+        ...(allowedFeatures !== undefined && { allowedFeatures }),
         profile: {
           update: {
             ...(fullName && { fullName }),
@@ -183,6 +193,7 @@ router.patch('/:id', validate(updateUserSchema), async (req: Request, res: Respo
         email: true,
         role: true,
         isActive: true,
+        allowedFeatures: true,
         updatedAt: true,
         profile: { select: { fullName: true, nip: true, phone: true } },
       },
