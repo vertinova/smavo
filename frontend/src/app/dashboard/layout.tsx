@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   LayoutGrid, Package, Wallet, GraduationCap, Users, FileText,
-  LogOut, Menu, X, UserCog, ShieldAlert, Sun, Moon, Palette, KeyRound,
+  LogOut, UserCog, ShieldAlert, Sun, Moon, Palette, KeyRound,
   Settings, MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -48,7 +48,6 @@ const TITLES: Record<string, string> = {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const { theme, setTheme } = useTheme();
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -114,21 +113,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* ── Desktop Sidebar ── */}
-      <aside className={cn(
-        'fixed inset-y-0 left-0 z-40 w-[220px] sidebar-surface border-r border-border flex-col',
-        'transition-transform duration-300 lg:translate-x-0 lg:static',
-        'hidden lg:flex',
-        open ? 'translate-x-0 !flex' : '-translate-x-full'
-      )}>
+      <aside className="fixed inset-y-0 left-0 z-40 w-[220px] sidebar-surface border-r border-border flex-col transition-transform duration-300 lg:translate-x-0 lg:static hidden lg:flex">
         <div className="flex items-center gap-2.5 px-4 h-14 shrink-0 border-b border-border">
           <Image src="/logo-smavo.jpeg" alt="SMAVO" width={32} height={32} className="w-8 h-8 rounded-lg object-cover shadow-md" />
           <div className="flex-1">
             <span className="text-foreground font-bold text-sm tracking-tight leading-none">SMAVO</span>
             <span className="block text-[10px] text-muted tracking-[0.15em] uppercase leading-none mt-0.5">SMAN 2 Cibinong</span>
           </div>
-          <button className="lg:hidden text-muted hover:text-foreground" onClick={() => setOpen(false)}>
-            <X size={16} />
-          </button>
+
         </div>
 
         <nav className="flex-1 px-2 pt-3 pb-3 space-y-0.5 overflow-y-auto">
@@ -136,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {filteredNav.map((item) => {
             const active = pathname === item.href;
             return (
-              <Link key={item.name} href={item.href} onClick={() => setOpen(false)}
+              <Link key={item.name} href={item.href}
                 className={cn(
                   'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-200',
                   active ? 'sidebar-nav-active' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]'
@@ -170,21 +162,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Mobile sidebar overlay */}
-      {open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden animate-fadeIn" onClick={() => setOpen(false)} />
-      )}
+
 
       {/* ── Main Content ── */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border h-12 flex items-center px-4 lg:px-6 gap-3 shrink-0">
-          <button className="lg:hidden text-muted hover:text-foreground transition-colors" onClick={() => setOpen(true)}>
-            <Menu size={18} />
-          </button>
-          <h1 className="text-sm font-semibold text-foreground">{title}</h1>
+          {/* Mobile: avatar + greeting */}
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <div className="w-8 h-8 rounded-xl header-avatar flex items-center justify-center shrink-0">
+              <span className="text-white text-[11px] font-bold">{initials}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted leading-none">Halo,</p>
+              <p className="text-sm font-semibold text-foreground truncate leading-tight">{user?.fullName?.split(' ')[0] || '...'}</p>
+            </div>
+          </div>
+          {/* Desktop: page title */}
+          <h1 className="text-sm font-semibold text-foreground hidden lg:block">{title}</h1>
           <div className="flex-1" />
 
-          <div className="hidden sm:flex items-center gap-0.5 bg-surface rounded-lg p-0.5 border border-border">
+          <div className="hidden lg:flex items-center gap-0.5 bg-surface rounded-lg p-0.5 border border-border">
             {THEMES.map((t) => (
               <button key={t.value} onClick={() => setTheme(t.value)}
                 className={cn('p-1.5 rounded-md transition-all duration-200',
@@ -195,11 +192,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ))}
           </div>
 
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <div className="w-7 h-7 rounded-lg header-avatar flex items-center justify-center">
               <span className="text-white text-[10px] font-bold">{initials}</span>
             </div>
             <span className="text-xs font-medium text-muted-foreground">{user?.fullName || ''}</span>
+          </div>
+
+          {/* Mobile: page title badge */}
+          <div className="lg:hidden bg-accent/10 text-accent px-3 py-1 rounded-full">
+            <span className="text-[11px] font-semibold">{title}</span>
           </div>
         </header>
 

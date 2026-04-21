@@ -130,9 +130,10 @@ export default function HomePage() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // If already running as PWA → go straight to login
+    // If already running as PWA → check session
     if (isStandaloneMode()) {
-      router.push('/login');
+      const token = localStorage.getItem('smavo_token');
+      router.replace(token ? '/dashboard' : '/login');
       return;
     }
 
