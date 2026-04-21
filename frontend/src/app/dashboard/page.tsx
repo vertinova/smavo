@@ -56,12 +56,12 @@ function StudentDashboard({ user }: { user: any }) {
     <div className="space-y-6 animate-fadeIn">
       {/* Greeting */}
       <div>
-        <p className="text-xs text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
+        <p className="text-xs text-muted uppercase tracking-widest mb-1 flex items-center gap-2" suppressHydrationWarning>
           <Sparkles size={12} className="text-accent" />
           {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())}
         </p>
         <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-          <span className="greeting-text">
+          <span className="greeting-text" suppressHydrationWarning>
             {greeting()}, {user?.fullName?.split(' ')[0] || 'Siswa'}
           </span>
         </h2>
@@ -259,12 +259,12 @@ function AdminDashboard({ user }: { user: any }) {
     <div className="space-y-5 animate-fadeIn">
       {/* Greeting */}
       <div>
-        <p className="text-xs text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
+        <p className="text-xs text-muted uppercase tracking-widest mb-1 flex items-center gap-2" suppressHydrationWarning>
           <Sparkles size={12} className="text-accent" />
           {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())}
         </p>
         <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-          <span className="greeting-text">
+          <span className="greeting-text" suppressHydrationWarning>
             {greeting()}, {user?.fullName?.split(' ')[0] || 'User'}
           </span>
         </h2>

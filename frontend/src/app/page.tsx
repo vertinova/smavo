@@ -563,7 +563,7 @@ export default function HomePage() {
           </div>
 
           <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400" suppressHydrationWarning>
               &copy; {new Date().getFullYear()} SMAVO Super App &mdash; SMAN 2 Cibinong. Hak cipta dilindungi.
             </p>
             <p className="text-[10px] text-slate-300">
