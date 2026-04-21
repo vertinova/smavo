@@ -178,11 +178,13 @@ router.get('/student/:studentId', async (req: Request, res: Response, next: Next
 router.get('/summary', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    const [byType, byClass, total, recentWeek, thisMonth, lastMonth] = await Promise.all([
+    const [byType, byClass, total, recentWeek, thisMonth, lastMonth, totalStudents, todayLogs, todayByType, studentsWithViolations] = await Promise.all([
       prisma.disciplineLog.groupBy({
         by: ['type'],
         _count: { id: true },
@@ -204,6 +206,29 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
       }),
       prisma.disciplineLog.count({
         where: { date: { gte: lastMonthStart, lte: lastMonthEnd } },
+      }),
+      // Total active students
+      prisma.student.count({ where: { isActive: true } }),
+      // Today's violations with student info
+      prisma.disciplineLog.findMany({
+        where: { date: { gte: todayStart, lte: todayEnd } },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          student: {
+            select: { id: true, nisn: true, fullName: true, class: { select: { name: true } } },
+          },
+        },
+      }),
+      // Today's violations by type
+      prisma.disciplineLog.groupBy({
+        by: ['type'],
+        where: { date: { gte: todayStart, lte: todayEnd } },
+        _count: { id: true },
+      }),
+      // Unique students who have violations
+      prisma.disciplineLog.groupBy({
+        by: ['studentId'],
+        _count: { id: true },
       }),
     ]);
 
@@ -237,6 +262,23 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
       return { ...ts, student };
     });
 
+    // Violation breakdown by type for percentage
+    const violationsByType: Record<string, number> = {};
+    studentsWithViolations.forEach(sv => {
+      // We need per-type unique students, but groupBy only gives per-student count
+      // Use a simpler approach: count unique students per type
+    });
+
+    // Get unique students per violation type
+    const studentsPerType = await prisma.$queryRaw`
+      SELECT type, COUNT(DISTINCT "studentId")::int as unique_students
+      FROM discipline_logs
+      GROUP BY type
+    ` as { type: string; unique_students: number }[];
+
+    const totalStudentsWithViolations = studentsWithViolations.length;
+    const safeStudents = totalStudents - totalStudentsWithViolations;
+
     res.json({
       success: true,
       data: {
@@ -248,6 +290,21 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
         byClass,
         topStudents: topStudentsWithNames,
         monthlyTrend,
+        // New: today's data
+        today: {
+          total: todayLogs.length,
+          logs: todayLogs,
+          byType: todayByType.map(b => ({ type: b.type, count: b._count.id })),
+        },
+        // New: student percentage stats
+        studentStats: {
+          totalStudents,
+          totalStudentsWithViolations,
+          safeStudents,
+          violationPercentage: totalStudents > 0 ? Math.round((totalStudentsWithViolations / totalStudents) * 1000) / 10 : 0,
+          safePercentage: totalStudents > 0 ? Math.round((safeStudents / totalStudents) * 1000) / 10 : 0,
+          byType: studentsPerType,
+        },
       },
     });
   } catch (err) {

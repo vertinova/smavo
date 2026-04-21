@@ -476,6 +476,197 @@ export default function DisciplinePage() {
             ))}
           </div>
 
+          {/* Today's Violations + Student Percentage */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Today's Violations */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                    <Calendar size={15} className="text-warning" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Pelanggaran Hari Ini</h3>
+                    <p className="text-[10px] text-muted">{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  </div>
+                </div>
+                <span className={cn(
+                  'text-2xl font-extrabold',
+                  (summary?.today?.total ?? 0) > 0 ? 'text-danger' : 'text-success'
+                )}>
+                  {summary?.today?.total ?? 0}
+                </span>
+              </div>
+
+              {/* Today by type badges */}
+              {(summary?.today?.byType?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {summary.today.byType.map((t: any) => {
+                    const tm = TYPE_MAP[t.type] ?? TYPE_MAP.TERLAMBAT;
+                    return <span key={t.type} className={tm.cls}>{tm.label}: {t.count}</span>;
+                  })}
+                </div>
+              )}
+
+              {/* Today's violations list */}
+              {loadingSummary ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-foreground/[0.03] rounded-xl animate-pulse" />)}
+                </div>
+              ) : (summary?.today?.logs?.length ?? 0) === 0 ? (
+                <div className="text-center py-8">
+                  <Shield size={28} className="mx-auto text-success/40 mb-2" />
+                  <p className="text-sm text-muted">Tidak ada pelanggaran hari ini</p>
+                  <p className="text-[10px] text-muted mt-1">Semua siswa tertib!</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {summary.today.logs.map((log: any) => {
+                    const t = TYPE_MAP[log.type] ?? TYPE_MAP.TERLAMBAT;
+                    const TIcon = t.icon;
+                    return (
+                      <div key={log.id} className="flex items-center gap-3 p-3 rounded-xl bg-foreground/[0.02] border border-border/50 hover:bg-foreground/[0.04] transition-colors cursor-pointer"
+                        onClick={() => setDetailId(log.student?.id)}>
+                        <div className={cn(
+                          'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                          log.type === 'TERLAMBAT' ? 'bg-warning/10' :
+                          log.type === 'ATRIBUT' ? 'bg-info/10' : 'bg-danger/10'
+                        )}>
+                          <TIcon size={14} className={cn(
+                            log.type === 'TERLAMBAT' ? 'text-warning' :
+                            log.type === 'ATRIBUT' ? 'text-info' : 'text-danger'
+                          )} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{log.student?.fullName}</p>
+                          <p className="text-[10px] text-muted">{log.student?.class?.name ?? '—'} {log.notes ? `· ${log.notes}` : ''}</p>
+                        </div>
+                        <span className={cn('text-[10px] font-semibold shrink-0', t.cls)}>{t.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Student Percentage Donut */}
+            <div className="card">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <BarChart3 size={15} className="text-accent" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Persentase Kedisiplinan Siswa</h3>
+              </div>
+
+              {loadingSummary ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-40 h-40 rounded-full bg-foreground/[0.03] animate-pulse" />
+                </div>
+              ) : (() => {
+                const stats = summary?.studentStats;
+                const totalS = stats?.totalStudents ?? 0;
+                const violated = stats?.totalStudentsWithViolations ?? 0;
+                const safe = stats?.safeStudents ?? 0;
+                const safePct = stats?.safePercentage ?? 100;
+                const violatedPct = stats?.violationPercentage ?? 0;
+                const byTypePct = (stats?.byType ?? []) as { type: string; unique_students: number }[];
+
+                // SVG donut chart
+                const radius = 60;
+                const circumference = 2 * Math.PI * radius;
+
+                // Build segments: safe (green) + each violation type
+                const segments: { color: string; pct: number; label: string; count: number }[] = [];
+                byTypePct.forEach(bt => {
+                  const pct = totalS > 0 ? (bt.unique_students / totalS) * 100 : 0;
+                  const color = bt.type === 'TERLAMBAT' ? '#f59e0b' : bt.type === 'ATRIBUT' ? '#3b82f6' : '#ef4444';
+                  const label = TYPE_MAP[bt.type]?.label ?? bt.type;
+                  segments.push({ color, pct, label, count: bt.unique_students });
+                });
+
+                let offset = 0;
+
+                return (
+                  <div className="flex flex-col items-center gap-4">
+                    {/* SVG Donut */}
+                    <div className="relative">
+                      <svg width="180" height="180" viewBox="0 0 180 180">
+                        {/* Background circle */}
+                        <circle cx="90" cy="90" r={radius} fill="none" stroke="currentColor" strokeWidth="18"
+                          className="text-success/20" />
+                        {/* Safe segment */}
+                        <circle cx="90" cy="90" r={radius} fill="none" stroke="#22c55e" strokeWidth="18"
+                          strokeDasharray={`${(safePct / 100) * circumference} ${circumference}`}
+                          strokeDashoffset={0}
+                          strokeLinecap="round"
+                          transform="rotate(-90 90 90)"
+                          className="transition-all duration-1000" />
+                        {/* Violation segments */}
+                        {(() => {
+                          let accOffset = (safePct / 100) * circumference;
+                          return segments.map((seg, i) => {
+                            const dashLen = (seg.pct / 100) * circumference;
+                            const el = (
+                              <circle key={i} cx="90" cy="90" r={radius} fill="none" stroke={seg.color} strokeWidth="18"
+                                strokeDasharray={`${dashLen} ${circumference - dashLen}`}
+                                strokeDashoffset={-accOffset}
+                                strokeLinecap="round"
+                                transform="rotate(-90 90 90)"
+                                className="transition-all duration-1000" />
+                            );
+                            accOffset += dashLen;
+                            return el;
+                          });
+                        })()}
+                      </svg>
+                      {/* Center text */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <p className="text-2xl font-extrabold text-foreground">{totalS}</p>
+                        <p className="text-[10px] text-muted uppercase tracking-wider">Total Siswa</p>
+                      </div>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="w-full space-y-2">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-success/5 border border-success/20">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-success" />
+                          <span className="text-sm font-medium text-foreground">Aman (Tanpa Pelanggaran)</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-success">{safe}</span>
+                          <span className="text-[10px] text-muted ml-1">({safePct}%)</span>
+                        </div>
+                      </div>
+                      {segments.map((seg, i) => (
+                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-foreground/[0.02] border border-border/50">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: seg.color }} />
+                            <span className="text-sm font-medium text-foreground">{seg.label}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-foreground">{seg.count}</span>
+                            <span className="text-[10px] text-muted ml-1">({Math.round(seg.pct * 10) / 10}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-danger/5 border border-danger/20">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-danger" />
+                          <span className="text-sm font-medium text-foreground">Total Melanggar</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-danger">{violated}</span>
+                          <span className="text-[10px] text-muted ml-1">({violatedPct}%)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
           {/* Top offenders - enhanced */}
           <div className="card">
             <div className="flex items-center justify-between mb-5">
