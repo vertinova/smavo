@@ -77,12 +77,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // PWA gate: only allow dashboard in standalone/installed mode
     if (!isStandaloneMode()) { router.replace('/'); return; }
 
-    // Auto fullscreen on desktop/laptop PWA
-    const isDesktop = window.innerWidth >= 1024;
-    if (isDesktop && document.documentElement.requestFullscreen && !document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    }
-
     // Load saved font size
     const savedFontSize = localStorage.getItem('smavo_font_size') as 'small' | 'normal' | 'large';
     if (savedFontSize && ['small', 'normal', 'large'].includes(savedFontSize)) {

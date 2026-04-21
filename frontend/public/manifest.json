@@ -4,6 +4,7 @@
   "description": "Sistem Manajemen SMAN 2 Cibinong — Inventaris, Keuangan, Akademik, Persuratan & Kedisiplinan",
   "start_url": "/dashboard",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
   "background_color": "#f8faff",
   "theme_color": "#6366f1",
   "orientation": "portrait-primary",
