@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Search, Trash2, X, ChevronLeft, ChevronRight,
@@ -17,6 +17,166 @@ const TYPE_MAP: Record<string, { label: string; cls: string; icon: any }> = {
   PERILAKU: { label: 'Perilaku', cls: 'badge-danger', icon: UserX },
 };
 
+// ─── STUDENT VIEW ───────────────────────────────────────
+const CARD_STYLE = {
+  green:  { bg: 'bg-green-500/10',  border: 'border-green-500/40',  icon: 'bg-green-500/20 text-green-600',   text: 'text-green-700 dark:text-green-400',  divider: 'border-green-500/20' },
+  yellow: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/40', icon: 'bg-yellow-500/20 text-yellow-600', text: 'text-yellow-700 dark:text-yellow-400', divider: 'border-yellow-500/20' },
+  red:    { bg: 'bg-red-500/10',    border: 'border-red-500/40',    icon: 'bg-red-500/20 text-red-600',       text: 'text-red-700 dark:text-red-400',      divider: 'border-red-500/20' },
+};
+
+function StudentDisciplineView() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['discipline-me'],
+    queryFn: () => api.get('/discipline/me').then(r => r.data),
+  });
+
+  const myData = data?.data;
+  const cardStatus = myData?.cardStatus;
+  const cs = cardStatus ? CARD_STYLE[cardStatus.color as keyof typeof CARD_STYLE] : null;
+
+  if (isLoading) return (
+    <div className="space-y-4 animate-fadeIn">
+      {[1,2,3].map(i => <div key={i} className="h-28 bg-foreground/[0.03] rounded-2xl animate-pulse" />)}
+    </div>
+  );
+
+  if (error) return (
+    <div className="card text-center py-10">
+      <AlertTriangle size={28} className="mx-auto text-muted/30 mb-3" />
+      <p className="text-sm text-muted">Gagal memuat data disiplin</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header */}
+      <div>
+        <p className="text-[11px] text-muted uppercase tracking-widest mb-1">Kedisiplinan</p>
+        <h2 className="text-xl font-bold text-foreground tracking-tight">Riwayat Disiplin Saya</h2>
+      </div>
+
+      {/* Student Info */}
+      {myData?.student && (
+        <div className="card flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+            <User size={22} className="text-accent" />
+          </div>
+          <div>
+            <p className="font-bold text-foreground text-base">{myData.student.fullName}</p>
+            <p className="text-xs text-muted">NISN: {myData.student.nisn} · Kelas: {myData.student.class?.name ?? '—'}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Card Status */}
+      {cardStatus && cs ? (
+        <div className={cn('card border-2', cs.border, cs.bg)}>
+          <div className="flex items-center gap-4">
+            <div className={cn('w-14 h-14 rounded-xl flex items-center justify-center text-2xl shrink-0', cs.icon)}>
+              {cardStatus.color === 'green' ? '🟢' : cardStatus.color === 'yellow' ? '🟡' : '🔴'}
+            </div>
+            <div className="flex-1">
+              <p className={cn('font-bold text-lg leading-tight', cs.text)}>{cardStatus.card}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Tindakan: <span className="font-medium text-foreground">{cardStatus.action}</span>
+              </p>
+              <p className="text-xs text-muted mt-1">{myData?.total ?? 0} pelanggaran tercatat</p>
+            </div>
+          </div>
+          {cardStatus.color === 'red' && (
+            <div className={cn('mt-4 pt-4 border-t', cs.divider)}>
+              <p className={cn('text-sm font-semibold mb-1', cs.text)}>⚠ Perhatian!</p>
+              <p className="text-sm text-muted-foreground">
+                Kamu telah melebihi batas pelanggaran dan memerlukan pembinaan dari BK, Wakasek Kesiswaan, dan Orang Tua.
+                Segera temui guru BK untuk tindak lanjut.
+              </p>
+            </div>
+          )}
+          {cardStatus.color === 'yellow' && (
+            <div className={cn('mt-4 pt-4 border-t', cs.divider)}>
+              <p className="text-sm text-muted-foreground">
+                Kamu memerlukan pembinaan dari Wali Kelas. Perhatikan peraturan sekolah agar tidak bertambah pelanggaran.
+              </p>
+            </div>
+          )}
+          {cardStatus.color === 'green' && (
+            <div className={cn('mt-4 pt-4 border-t', cs.divider)}>
+              <p className="text-sm text-muted-foreground">
+                Kamu sudah mendapatkan kartu hijau. Perbaiki perilaku agar tidak bertambah pelanggaran.
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="card text-center py-10">
+          <div className="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center mx-auto mb-3">
+            <Shield size={28} className="text-green-600" />
+          </div>
+          <p className="font-semibold text-foreground mb-1">Tidak Ada Pelanggaran</p>
+          <p className="text-sm text-muted">Pertahankan prestasi kedisiplinanmu!</p>
+        </div>
+      )}
+
+      {/* Stats by type */}
+      {(myData?.total ?? 0) > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          {(myData?.byType ?? []).map((t: any) => {
+            const tm = TYPE_MAP[t.type] ?? TYPE_MAP.TERLAMBAT;
+            return (
+              <div key={t.type} className="card text-center">
+                <p className="text-2xl font-bold text-foreground">{t.count}</p>
+                <p className="text-[11px] text-muted uppercase tracking-widest mt-1">{tm.label}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Violation history */}
+      <div className="card">
+        <p className="text-xs font-semibold text-muted uppercase tracking-widest mb-4">Riwayat Pelanggaran</p>
+        {(myData?.logs?.length ?? 0) === 0 ? (
+          <div className="text-center py-8">
+            <Shield size={28} className="mx-auto text-muted/30 mb-3" />
+            <p className="text-sm text-muted">Belum ada catatan pelanggaran</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {(myData?.logs ?? []).map((log: any) => {
+              const t = TYPE_MAP[log.type] ?? TYPE_MAP.TERLAMBAT;
+              const TIcon = t.icon;
+              return (
+                <div key={log.id} className="flex items-start gap-3 p-3 rounded-xl bg-foreground/[0.02] border border-border/50">
+                  <div className={cn(
+                    'w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+                    log.type === 'TERLAMBAT' ? 'bg-warning/10' : log.type === 'ATRIBUT' ? 'bg-info/10' : 'bg-danger/10'
+                  )}>
+                    <TIcon size={15} className={cn(
+                      log.type === 'TERLAMBAT' ? 'text-warning' : log.type === 'ATRIBUT' ? 'text-info' : 'text-danger'
+                    )} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={cn('text-xs font-semibold', t.cls)}>{t.label}</span>
+                      <span className="text-[10px] text-muted">
+                        {new Date(log.date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    {log.notes
+                      ? <p className="text-sm text-muted-foreground">{log.notes}</p>
+                      : <p className="text-sm text-muted italic">Tidak ada catatan</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── MANAGEMENT VIEW ─────────────────────────────────────
 export default function DisciplinePage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
@@ -31,6 +191,14 @@ export default function DisciplinePage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [delId, setDelId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem('smavo_user');
+    if (raw) {
+      try { setUserRole(JSON.parse(raw).role); } catch { /* ignore */ }
+    }
+  }, []);
 
   // Fetch logs
   const { data, isLoading } = useQuery({
@@ -124,6 +292,9 @@ export default function DisciplinePage() {
       notes: form.notes || undefined,
     });
   };
+
+  // ── Student gets their own read-only view ──
+  if (userRole === 'SISWA') return <StudentDisciplineView />;
 
   return (
     <div className="space-y-6 animate-fadeIn">

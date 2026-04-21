@@ -81,6 +81,53 @@ function getCardStatus(total: number): { card: string; color: string; action: st
   return { card: 'Kartu Merah', color: 'red', action: 'Pembinaan BK, Wakasek Kesiswaan & Orang Tua' };
 }
 
+// GET /api/discipline/me — current logged-in student's violations
+router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const email: string = (req as any).user?.email ?? '';
+    const nisnMatch = email.match(/^siswa\.(\d+)@/);
+    if (!nisnMatch) {
+      return res.status(403).json({ success: false, message: 'Endpoint ini hanya untuk akun siswa' });
+    }
+    const nisn = nisnMatch[1];
+
+    const student = await prisma.student.findUnique({
+      where: { nisn },
+      select: {
+        id: true, nisn: true, fullName: true, gender: true, phone: true,
+        class: { select: { id: true, name: true } },
+      },
+    });
+    if (!student) throw new NotFoundError('Data siswa tidak ditemukan');
+
+    const logs = await prisma.disciplineLog.findMany({
+      where: { studentId: student.id },
+      orderBy: { date: 'desc' },
+    });
+
+    const byType = await prisma.disciplineLog.groupBy({
+      by: ['type'],
+      where: { studentId: student.id },
+      _count: { id: true },
+    });
+
+    const cardStatus = getCardStatus(logs.length);
+
+    res.json({
+      success: true,
+      data: {
+        student,
+        logs,
+        total: logs.length,
+        byType: byType.map(b => ({ type: b.type, count: b._count.id })),
+        cardStatus,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/discipline/student/:studentId — all violations for a student
 router.get('/student/:studentId', async (req: Request, res: Response, next: NextFunction) => {
   try {
