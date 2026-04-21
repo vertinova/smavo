@@ -429,106 +429,170 @@ async function main() {
 
   const rootDir = path.resolve(process.cwd(), '..');
 
-  // ── Create 12 real classes (X 1 – X 12) ──
-  const realClassNames = Array.from({ length: 12 }, (_, i) => `X ${i + 1}`);
+  // ── Create real classes from all CSV files ──
   const realClasses: Record<string, string> = {}; // name -> id
 
-  for (let i = 0; i < realClassNames.length; i++) {
-    const cName = realClassNames[i];
-    const homeroom = teachers[i % teachers.length];
+  // Grade configs for all CSVs
+  const gradeConfigs = [
+    { grade: 10, presensi: 'Dicipline Log Kelas X 2025 - Presensi.csv', discipline: 'Dicipline Log Kelas X 2025 - Data Input.csv' },
+    { grade: 11, presensi: 'Dicipline Log Kelas XI 2025 - Presensi.csv', discipline: 'Dicipline Log Kelas XI 2025 - Data Input.csv' },
+    { grade: 12, presensi: 'Dicipline Log Kelas XII 2025-2026 - Presensi.csv', discipline: 'Dicipline Log Kelas XII 2025-2026 - Data Input.csv' },
+  ];
+
+  // Helper: extract NISN from possibly combined format ("0082590495 / 242510008" → "0082590495")
+  function extractNISN(raw: string): string {
+    const cleaned = raw.trim();
+    if (cleaned.includes('/')) return cleaned.split('/')[0].trim();
+    return cleaned;
+  }
+
+  // Helper: normalize class name (trim, collapse spaces)
+  function normalizeClassName(raw: string): string {
+    return raw.replace(/\s+/g, ' ').trim();
+  }
+
+  // First pass: scan all Presensi CSVs to discover class names
+  const allClassNames = new Set<string>();
+  const classGradeMap: Record<string, number> = {};
+
+  for (const cfg of gradeConfigs) {
+    const csvPath = path.join(rootDir, cfg.presensi);
+    if (!fs.existsSync(csvPath)) continue;
+    const lines = fs.readFileSync(csvPath, 'utf-8').split('\n');
+    let headerIdx = -1;
+    for (let i = 0; i < Math.min(20, lines.length); i++) {
+      if (/^No[,]/.test(lines[i]) && lines[i].includes('Nama') && lines[i].includes('Kelas')) {
+        headerIdx = i;
+        break;
+      }
+    }
+    if (headerIdx < 0) continue;
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+      const cols = parseCSVRow(lines[i].trim());
+      const className = normalizeClassName(cols[3] || '');
+      if (className && /^\d+$/.test(cols[0]?.trim())) {
+        allClassNames.add(className);
+        classGradeMap[className] = cfg.grade;
+      }
+    }
+  }
+
+  // Create all discovered classes
+  for (const cName of allClassNames) {
+    const grade = classGradeMap[cName] || 10;
     const cls = await prisma.class.upsert({
       where: { name_academicYear: { name: cName, academicYear: '2025/2026' } },
       update: {},
-      create: { name: cName, grade: 10, academicYear: '2025/2026' },
+      create: { name: cName, grade, academicYear: '2025/2026' },
     });
     realClasses[cName] = cls.id;
   }
   console.log(`   Real Classes: ${Object.keys(realClasses).length}`);
 
-  // ── Parse Presensi CSV for real students ──
-  const presensiPath = path.join(rootDir, 'Dicipline Log Kelas X 2025 - Presensi.csv');
+  // ── Parse all Presensi CSVs for real students ──
   let realStudentCount = 0;
   const studentIdMap: Record<string, string> = {}; // "name|class" -> student.id
+  let globalNisCounter = 1;
 
-  if (fs.existsSync(presensiPath)) {
+  for (const cfg of gradeConfigs) {
+    const presensiPath = path.join(rootDir, cfg.presensi);
+    if (!fs.existsSync(presensiPath)) {
+      console.log(`   ⚠ ${cfg.presensi} not found, skipping`);
+      continue;
+    }
+
     const presensiLines = fs.readFileSync(presensiPath, 'utf-8').split('\n');
-    // Find header row (starts with "No,NISN,Nama,Kelas")
+    // Find header row: matches "No" + "Nama" + "Kelas" in same line (handles different header formats)
     let headerIdx = -1;
     for (let i = 0; i < Math.min(20, presensiLines.length); i++) {
-      if (presensiLines[i].startsWith('No,NISN,')) { headerIdx = i; break; }
-    }
-
-    if (headerIdx >= 0) {
-      for (let i = headerIdx + 1; i < presensiLines.length; i++) {
-        const cols = parseCSVRow(presensiLines[i].trim());
-        const no = cols[0]?.trim();
-        const nisn = cols[1]?.trim();
-        const fullName = cols[2]?.trim();
-        const className = cols[3]?.trim();
-        if (!no || !nisn || !fullName || !className) continue;
-
-        // Normalize class name: "X 1" stays, "X  1" -> "X 1"
-        const normClass = className.replace(/\s+/g, ' ').trim();
-        const classId = realClasses[normClass];
-        if (!classId) continue;
-
-        const gender = Gender.LAKI_LAKI; // default, real gender not in CSV
-        const nis = `2025${String(i).padStart(4, '0')}`;
-
-        try {
-          const student = await prisma.student.upsert({
-            where: { nisn },
-            update: { fullName, classId },
-            create: {
-              nisn,
-              nis,
-              fullName,
-              gender,
-              birthPlace: 'Bogor',
-              birthDate: new Date('2008-01-01'),
-              religion: 'Islam',
-              classId,
-              entryYear: 2025,
-              parentName: `Orang Tua ${fullName.split(' ')[0]}`,
-              parentPhone: `0812${nisn.slice(-7)}`,
-            },
-          });
-          studentIdMap[`${fullName.toLowerCase()}|${normClass}`] = student.id;
-          realStudentCount++;
-        } catch {
-          // skip duplicates or errors
-        }
+      if (/^No[,]/.test(presensiLines[i]) && presensiLines[i].includes('Nama') && presensiLines[i].includes('Kelas')) {
+        headerIdx = i;
+        break;
       }
     }
-    console.log(`   Real Students: ${realStudentCount}`);
-  } else {
-    console.log('   ⚠ Presensi CSV not found, skipping real students');
-  }
 
-  // ── Parse Discipline Log CSV ──
-  const disciplinePath = path.join(rootDir, 'Dicipline Log Kelas X 2025 - Data Input.csv');
+    if (headerIdx < 0) {
+      console.log(`   ⚠ Could not find header in ${cfg.presensi}, skipping`);
+      continue;
+    }
+
+    let gradeStudentCount = 0;
+    for (let i = headerIdx + 1; i < presensiLines.length; i++) {
+      const cols = parseCSVRow(presensiLines[i].trim());
+      const no = cols[0]?.trim();
+      const rawNisn = cols[1]?.trim();
+      const fullName = cols[2]?.trim();
+      const rawClassName = cols[3]?.trim();
+      if (!no || !/^\d+$/.test(no) || !rawNisn || !fullName || !rawClassName) continue;
+
+      const nisn = extractNISN(rawNisn);
+      if (!nisn || nisn === 'Pindahan') continue;
+
+      const normClass = normalizeClassName(rawClassName);
+      const classId = realClasses[normClass];
+      if (!classId) continue;
+
+      const gender = Gender.LAKI_LAKI; // default, real gender not in CSV
+      const nis = `2025${String(globalNisCounter++).padStart(5, '0')}`;
+
+      try {
+        const student = await prisma.student.upsert({
+          where: { nisn },
+          update: { fullName, classId },
+          create: {
+            nisn,
+            nis,
+            fullName,
+            gender,
+            birthPlace: 'Bogor',
+            birthDate: new Date(`${2010 - (cfg.grade - 10)}-01-01`),
+            religion: 'Islam',
+            classId,
+            entryYear: 2025 - (cfg.grade - 10),
+            parentName: `Orang Tua ${fullName.split(' ')[0]}`,
+            parentPhone: `0812${nisn.slice(-7)}`,
+          },
+        });
+        studentIdMap[`${fullName.toLowerCase()}|${normClass}`] = student.id;
+        gradeStudentCount++;
+      } catch {
+        // skip duplicates or errors
+      }
+    }
+    realStudentCount += gradeStudentCount;
+    console.log(`   Real Students from ${cfg.presensi}: ${gradeStudentCount}`);
+  }
+  console.log(`   Total Real Students: ${realStudentCount}`);
+
+  // ── Parse all Discipline Log CSVs ──
   let disciplineCount = 0;
 
-  if (fs.existsSync(disciplinePath)) {
-    console.log('📋 Seeding discipline logs from CSV...');
+  // Preload all students with class for matching
+  const allRealStudents = await prisma.student.findMany({
+    where: { classId: { in: Object.values(realClasses) } },
+    include: { class: true },
+  });
+  const studentLookup: Record<string, string> = {};
+  for (const s of allRealStudents) {
+    if (s.class) {
+      studentLookup[`${s.fullName.toLowerCase()}|${s.class.name}`] = s.id;
+    }
+  }
 
-    // Preload all students with class for matching
-    const allRealStudents = await prisma.student.findMany({
-      where: { classId: { in: Object.values(realClasses) } },
-      include: { class: true },
-    });
-    const studentLookup: Record<string, string> = {};
-    for (const s of allRealStudents) {
-      if (s.class) {
-        studentLookup[`${s.fullName.toLowerCase()}|${s.class.name}`] = s.id;
-      }
+  // Delete existing discipline logs first to avoid duplicates on re-seed
+  await prisma.disciplineLog.deleteMany({});
+
+  for (const cfg of gradeConfigs) {
+    const disciplinePath = path.join(rootDir, cfg.discipline);
+    if (!fs.existsSync(disciplinePath)) {
+      console.log(`   ⚠ ${cfg.discipline} not found, skipping`);
+      continue;
     }
 
+    console.log(`📋 Seeding discipline logs from ${cfg.discipline}...`);
     const lines = fs.readFileSync(disciplinePath, 'utf-8').split('\n');
     let lastDate = '';
-
-    // Delete existing discipline logs first to avoid duplicates on re-seed
-    await prisma.disciplineLog.deleteMany({});
+    let gradeDisciplineCount = 0;
 
     for (let i = 1; i < lines.length; i++) {
       const cols = parseCSVRow(lines[i].trim());
@@ -541,7 +605,7 @@ async function main() {
       if (!name) continue;
 
       // Normalize class: "X 4 " -> "X 4"
-      const normClass = (className || '').replace(/\s+/g, ' ').trim();
+      const normClass = normalizeClassName(className || '');
 
       // Use last known date if this row has no date
       if (dateStr) lastDate = dateStr;
@@ -584,15 +648,15 @@ async function main() {
             notes: notes || null,
           },
         });
-        disciplineCount++;
+        gradeDisciplineCount++;
       } catch {
         // skip errors
       }
     }
-    console.log(`   Discipline Logs: ${disciplineCount}`);
-  } else {
-    console.log('   ⚠ Discipline CSV not found, skipping');
+    disciplineCount += gradeDisciplineCount;
+    console.log(`   Discipline Logs from ${cfg.discipline}: ${gradeDisciplineCount}`);
   }
+  console.log(`   Total Discipline Logs: ${disciplineCount}`);
 
   console.log('✅ Seeding completed!');
 
@@ -626,7 +690,6 @@ async function main() {
   const allStudentsForAccounts = await prisma.student.findMany({
     where: { isActive: true },
     select: { id: true, nisn: true, fullName: true },
-    take: 750,
   });
   for (const s of allStudentsForAccounts) allNames.push({ fullName: s.fullName, role: 'SISWA', ref: s });
 
