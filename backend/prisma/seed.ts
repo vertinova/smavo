@@ -25,7 +25,8 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log('🌱 Seeding SMAVO database...');
 
-  const hashedPassword = await bcrypt.hash('admin123', 12);
+  const adminPassword = await bcrypt.hash('admin123', 12);
+  const defaultPassword = await bcrypt.hash('password', 12);
 
   // ─── USERS ───────────────────────────────────────────
   const admin = await prisma.user.upsert({
@@ -33,7 +34,7 @@ async function main() {
     update: {},
     create: {
       email: 'admin@smavo.sch.id',
-      password: hashedPassword,
+      password: adminPassword,
       role: Role.ADMIN,
       profile: { create: { fullName: 'Administrator SMAVO', nip: '000000000000000000', phone: '081200000001' } },
     },
@@ -44,7 +45,7 @@ async function main() {
     update: {},
     create: {
       email: 'bendahara@smavo.sch.id',
-      password: hashedPassword,
+      password: defaultPassword,
       role: Role.BENDAHARA,
       profile: { create: { fullName: 'Siti Rahayu, S.Pd', nip: '198501012010012001', phone: '081200000002' } },
     },
@@ -55,7 +56,7 @@ async function main() {
     update: {},
     create: {
       email: 'guru@smavo.sch.id',
-      password: hashedPassword,
+      password: defaultPassword,
       role: Role.GURU,
       profile: { create: { fullName: 'Drs. Budi Santoso', nip: '197203152000031002', phone: '081200000003' } },
     },
@@ -66,7 +67,7 @@ async function main() {
     update: {},
     create: {
       email: 'tu@smavo.sch.id',
-      password: hashedPassword,
+      password: defaultPassword,
       role: Role.STAF_TU,
       profile: { create: { fullName: 'Ahmad Fauzi', nip: '199001052015041001', phone: '081200000004' } },
     },
@@ -672,7 +673,7 @@ async function main() {
 
   // ─── TEACHER ACCOUNTS ──────────────────────────────────
   console.log('👤 Creating teacher accounts...');
-  const guruPassword = await bcrypt.hash('guru123', 12);
+  const guruPassword = await bcrypt.hash('password', 12);
   let teacherAccountCount = 0;
 
   for (const t of realTeachers) {
@@ -695,7 +696,7 @@ async function main() {
 
   // ─── STUDENT ACCOUNTS ──────────────────────────────────
   console.log('🎓 Creating student accounts...');
-  const siswaPassword = await bcrypt.hash('siswa123', 12);
+  const siswaPassword = await bcrypt.hash('password', 12);
   let studentAccountCount = 0;
 
   for (const s of allStudentsForAccounts) {
@@ -716,9 +717,9 @@ async function main() {
   }
   console.log(`   Student accounts created: ${studentAccountCount}`);
 
-  console.log(`   Users    : admin, bendahara, guru, tu (password: admin123)`);
-  console.log(`   Teachers : ${teachers.length} dummy + ${realTeachers.length} real (password: guru123)`);
-  console.log(`   Students : ${studentCreates.length} dummy + ${realStudentCount} real (password: siswa123)`);
+  console.log(`   Users    : admin (password: admin123), bendahara/guru/tu (password: password)`);
+  console.log(`   Teachers : ${teachers.length} dummy + ${realTeachers.length} real (password: password)`);
+  console.log(`   Students : ${studentCreates.length} dummy + ${realStudentCount} real (password: password)`);
   console.log(`   Assets   : ${assets.length}`);
   console.log(`   Expenses : ${expenseData.length}`);
   console.log(`   Letters  : ${letterData.length}`);
