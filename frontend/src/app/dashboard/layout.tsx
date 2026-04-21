@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type Theme } from '@/lib/theme';
+import { isStandaloneMode } from '@/lib/pwa';
 import ChangePasswordModal from './components/ChangePasswordModal';
 
 const NAV = [
@@ -61,6 +62,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   useEffect(() => {
+    // PWA gate: only allow dashboard in standalone/installed mode
+    if (!isStandaloneMode()) { router.replace('/'); return; }
+
     const token = localStorage.getItem('smavo_token');
     const raw = localStorage.getItem('smavo_user');
     if (!token) { router.push('/login'); return; }

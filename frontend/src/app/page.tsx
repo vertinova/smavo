@@ -3,12 +3,17 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { isStandaloneMode } from '@/lib/pwa';
 import {
   ArrowRight, Package, Wallet, GraduationCap, Users, FileText,
   ShieldAlert, BarChart3, CheckCircle2, Zap, Lock, ChevronDown,
   Sparkles, MousePointer2, Globe, Award, BookOpen, Building2,
   MapPin, Phone, Mail, Star, Heart, Rocket, Download,
 } from 'lucide-react';
+
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 /* ─── Data ─── */
 const MODULES = [
@@ -106,17 +111,35 @@ function useReveal() {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const aboutRef = useReveal();
   const factsRef = useReveal();
   const featuresRef = useReveal();
   const whyRef = useReveal();
   const ctaRef = useReveal();
 
+  // Lottie animation data
+  const [lottieData, setLottieData] = useState<any>(null);
+  useEffect(() => {
+    fetch('/lottie-chatbot.json').then(r => r.json()).then(setLottieData).catch(() => {});
+  }, []);
+
   // PWA install prompt
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // If already running as PWA → go straight to login
+    if (isStandaloneMode()) {
+      router.push('/login');
+      return;
+    }
+
+    // Detect iOS for manual install instructions
+    const ua = navigator.userAgent;
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
     const handler = (e: any) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -129,7 +152,7 @@ export default function HomePage() {
     }
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [router]);
 
   const handleInstall = async () => {
     if (!installPrompt) return;
@@ -186,171 +209,72 @@ export default function HomePage() {
                 <span className="sm:hidden">Install</span>
               </button>
             )}
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 rounded-full bg-white/80 backdrop-blur border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 shadow-sm hover:shadow-md transition-all duration-300"
-            >
-              Masuk
-              <ArrowRight size={14} />
-            </Link>
           </div>
         </div>
       </nav>
 
       {/* ═══ HERO ═══ */}
-      <section className="relative z-10 pt-8 sm:pt-20 pb-12 sm:pb-28">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
-          {/* Badge */}
-          <div className="animate-fade-up inline-flex items-center gap-2.5 bg-white/80 backdrop-blur border border-indigo-100 rounded-full px-5 py-2 mb-8 shadow-sm">
-            <Sparkles size={14} className="text-indigo-500" />
-            <span className="text-xs font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-              SMAN 2 Cibinong &middot; Kabupaten Bogor
-            </span>
+      <section className="relative z-10 pt-4 sm:pt-10 pb-8 sm:pb-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center">
+          {/* Lottie Animation - Large */}
+          <div className="animate-fade-up w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 mb-6 sm:mb-8">
+            {lottieData ? (
+              <Lottie animationData={lottieData} loop autoplay className="w-full h-full drop-shadow-2xl" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 animate-pulse" />
+            )}
           </div>
 
-          {/* Headline */}
-          <h1 className="animate-fade-up-delay-1 text-3xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight leading-[1.1] mb-2 sm:mb-3">
+          {/* App Name */}
+          <h1 className="animate-fade-up-delay-1 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none mb-2">
             <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-x">
               SMAVO
             </span>
           </h1>
-          <h2 className="animate-fade-up-delay-1 text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-800 mb-4 sm:mb-6">
-            Super App
-          </h2>
-
-          {/* Subtitle */}
-          <p className="animate-fade-up-delay-2 text-slate-500 text-base sm:text-lg leading-relaxed mb-4 max-w-2xl mx-auto">
-            Satu aplikasi untuk seluruh kebutuhan manajemen SMAN 2 Cibinong &mdash;
-            dari inventaris aset, keuangan BOS, data akademik, persuratan,
-            hingga kedisiplinan siswa.
-          </p>
-          <p className="animate-fade-up-delay-2 text-slate-400 text-sm mb-10 max-w-lg mx-auto">
-            Dibangun khusus untuk warga SMAVO. Akses mudah, data real-time, semua dalam satu platform.
+          <p className="animate-fade-up-delay-1 text-sm sm:text-base text-slate-400 font-medium mb-8 sm:mb-10">
+            Super App &middot; SMAN 2 Cibinong
           </p>
 
-          {/* CTA buttons */}
-          <div className="animate-fade-up-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-            <Link
-              href="/login"
-              className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-8 py-3.5 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
-              <span className="relative z-10">Masuk ke SMAVO</span>
-              <ArrowRight size={15} className="relative z-10 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-            <a
-              href="#tentang"
-              className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
-            >
-              Tentang Kami
-              <ChevronDown size={14} className="animate-bounce-gentle" />
-            </a>
-            {installPrompt && !isInstalled && (
+          {/* CTA - Install */}
+          <div className="animate-fade-up-delay-2 flex flex-col items-center gap-3">
+            {installPrompt && !isInstalled ? (
               <button
                 onClick={handleInstall}
-                className="inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-full bg-white/90 backdrop-blur border border-indigo-200 text-indigo-600 shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300 active:scale-[0.98]"
+                className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-10 py-4 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
               >
-                <Download size={15} />
-                Install Aplikasi
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
+                <Download size={18} className="relative z-10" />
+                <span className="relative z-10">Install Aplikasi</span>
               </button>
-            )}
-          </div>
-
-          {/* ── Dashboard preview mockup ── */}
-          <div className="animate-fade-up-delay-4 mt-10 sm:mt-20 max-w-4xl mx-auto">
-            <div className="relative">
-              {/* Glow behind */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-indigo-400/20 via-violet-400/20 to-purple-400/20 rounded-3xl blur-2xl" />
-
-              <div className="relative bg-white/80 backdrop-blur-sm border border-white/60 rounded-2xl p-1.5 sm:p-2 shadow-2xl shadow-indigo-500/10">
-                <div className="bg-gradient-to-b from-slate-50 to-white rounded-xl border border-slate-100 overflow-hidden">
-                  {/* Browser bar */}
-                  <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-white/60">
-                    <div className="flex gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                    </div>
-                    <div className="flex-1 flex justify-center">
-                      <div className="bg-slate-100 rounded-md px-4 py-1 text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
-                        <Lock size={8} />
-                        smavo.sch.id/dashboard
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dashboard mock */}
-                  <div className="p-4 sm:p-6 space-y-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {[
-                        { label: 'Total Siswa', val: '1,247', c: 'from-blue-500 to-cyan-500', bg: 'from-blue-50 to-cyan-50' },
-                        { label: 'Total Guru', val: '86', c: 'from-emerald-500 to-teal-500', bg: 'from-emerald-50 to-teal-50' },
-                        { label: 'Aset Aktif', val: '3,521', c: 'from-violet-500 to-purple-500', bg: 'from-violet-50 to-purple-50' },
-                        { label: 'Dana BOS', val: 'Rp 2.1M', c: 'from-amber-500 to-orange-500', bg: 'from-amber-50 to-orange-50' },
-                      ].map((s) => (
-                        <div key={s.label} className={`bg-gradient-to-br ${s.bg} rounded-xl border border-white p-3 text-left shadow-sm`}>
-                          <p className="text-[10px] text-slate-400 mb-1 font-medium">{s.label}</p>
-                          <p className={`text-base sm:text-lg font-bold bg-gradient-to-r ${s.c} bg-clip-text text-transparent`}>{s.val}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="col-span-2 bg-gradient-to-br from-indigo-50/50 to-white rounded-xl border border-slate-100 p-3 h-28 flex items-end gap-1">
-                        {[40, 65, 50, 80, 60, 90, 70, 85, 55, 75, 95, 68].map((h, i) => (
-                          <div
-                            key={i}
-                            className="flex-1 rounded-t-sm bg-gradient-to-t from-indigo-500 to-violet-400 origin-bottom animate-bar-grow"
-                            style={{ height: `${h}%`, animationDelay: `${0.5 + i * 0.08}s` }}
-                          />
-                        ))}
-                      </div>
-                      <div className="bg-gradient-to-br from-violet-50/50 to-white rounded-xl border border-slate-100 p-3 flex flex-col justify-center items-center">
-                        <svg className="w-16 h-16 -rotate-90" viewBox="0 0 60 60">
-                          <circle cx="30" cy="30" r="24" fill="none" stroke="#e2e8f0" strokeWidth="5" />
-                          <circle cx="30" cy="30" r="24" fill="none" stroke="url(#donutGrad)" strokeWidth="5" strokeLinecap="round" className="animate-donut-draw" style={{ strokeDasharray: '0 151' }} />
-                          <defs>
-                            <linearGradient id="donutGrad" x1="0" y1="0" x2="1" y2="1">
-                              <stop offset="0%" stopColor="#6366f1" />
-                              <stop offset="100%" stopColor="#a855f7" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium">71% Realisasi</p>
-                      </div>
-                    </div>
-                  </div>
+            ) : isIOS ? (
+              <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-5 max-w-xs text-center shadow-lg">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-3">
+                  <Download size={18} className="text-white" />
                 </div>
+                <p className="text-sm font-semibold text-slate-700 mb-2">Install di iPhone / iPad</p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Ketuk tombol <span className="inline-flex items-center gap-0.5 font-semibold text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg> Share</span> di Safari, lalu pilih <strong>&quot;Add to Home Screen&quot;</strong>
+                </p>
               </div>
-
-              {/* Floating accent cards */}
-              <div className="hidden lg:block absolute -left-16 top-1/3 animate-float">
-                <div className="bg-white rounded-xl border border-slate-100 p-3 shadow-lg shadow-slate-200/50 flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                    <CheckCircle2 size={14} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400">Akreditasi</p>
-                    <p className="text-xs font-bold text-emerald-600">A</p>
-                  </div>
+            ) : !isInstalled ? (
+              <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-5 max-w-xs text-center shadow-lg">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-3">
+                  <Download size={18} className="text-white" />
                 </div>
+                <p className="text-sm font-semibold text-slate-700 mb-2">Install Aplikasi</p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Buka di <strong>Chrome</strong> atau <strong>Edge</strong>, lalu ketuk ikon install di address bar untuk menginstall SMAVO.
+                </p>
               </div>
-              <div className="hidden lg:block absolute -right-12 top-1/2 animate-float-delayed">
-                <div className="bg-white rounded-xl border border-slate-100 p-3 shadow-lg shadow-slate-200/50 flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center">
-                    <BarChart3 size={14} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400">Super App</p>
-                    <p className="text-xs font-bold text-violet-600">6 Modul</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            ) : null}
 
-          {/* Scroll indicator */}
-          <div className="mt-12 flex justify-center animate-bounce-gentle">
-            <MousePointer2 size={18} className="text-slate-300 rotate-180" />
+            <a
+              href="#tentang"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-500 transition-colors mt-2"
+            >
+              Pelajari lebih lanjut
+              <ChevronDown size={12} className="animate-bounce-gentle" />
+            </a>
           </div>
         </div>
       </section>

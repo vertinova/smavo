@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { isStandaloneMode } from '@/lib/pwa';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // PWA gate: only allow login in standalone/installed mode
+  useEffect(() => {
+    if (!isStandaloneMode()) {
+      router.replace('/');
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
