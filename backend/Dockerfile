@@ -21,4 +21,4 @@ RUN mkdir -p uploads
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate && npx prisma db seed && npx tsx src/server.ts"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate && (npx prisma db seed || echo 'Seed skipped or failed, continuing...') && npx tsx src/server.ts"]
