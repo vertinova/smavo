@@ -595,14 +595,89 @@ async function main() {
 
   console.log('✅ Seeding completed!');
 
+  // ─── EMAIL GENERATION HELPERS ──────────────────────────
+  const TITLE_PREFIXES = ['hj.', 'drs.', 'dra.', 'rr.', 'prof.', 'dr.', 'ir.', 'h.', 'kh.'];
+  const DEGREE_SUFFIXES = [
+    'm.pd.', 's.pd.', 's.si.', 's.sos.', 's.kom.', 's.h.', 'm.h.',
+    's.pd.i.', 's.hum.', 's.e.', 'm.si.', 'm.m.', 'm.pd', 's.pd',
+    's.si', 's.sos', 's.kom', 's.h', 'm.h', 's.pd.i', 's.hum', 's.e',
+  ];
+
+  function extractParts(fn: string): string[] {
+    let name = fn.split(',')[0].trim();
+    let parts = name.split(/\s+/);
+    parts = parts.filter(p => !TITLE_PREFIXES.includes(p.toLowerCase()));
+    parts = parts.filter(p => {
+      const lower = p.toLowerCase().replace(/\.$/, '');
+      return !DEGREE_SUFFIXES.some(s => lower === s.replace(/\.$/, '') || lower === s);
+    });
+    return parts.filter(p => p.length > 1 && p !== '.' && !/^[A-Z]\.$/.test(p));
+  }
+
+  function toSlug(s: string): string {
+    return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  // Collect all names (teachers + students) to detect duplicates
+  const allNames: { fullName: string; role: 'GURU' | 'SISWA'; ref: any }[] = [];
+  for (const t of realTeachers) allNames.push({ fullName: t.fullName, role: 'GURU', ref: t });
+
+  const allStudentsForAccounts = await prisma.student.findMany({
+    where: { isActive: true },
+    select: { id: true, nisn: true, fullName: true },
+    take: 750,
+  });
+  for (const s of allStudentsForAccounts) allNames.push({ fullName: s.fullName, role: 'SISWA', ref: s });
+
+  // Group by first name slug
+  const nameGroups: Record<string, typeof allNames> = {};
+  for (const entry of allNames) {
+    const parts = extractParts(entry.fullName);
+    if (!parts.length) continue;
+    const key = toSlug(parts[0]);
+    if (!key) continue;
+    if (!nameGroups[key]) nameGroups[key] = [];
+    nameGroups[key].push(entry);
+  }
+
+  // Generate unique emails
+  const emailAssignments = new Map<any, string>(); // ref → email
+  const usedEmails = new Set(['admin@smavo.sch.id', 'bendahara@smavo.sch.id', 'guru@smavo.sch.id', 'tu@smavo.sch.id']);
+
+  for (const [firstSlug, group] of Object.entries(nameGroups)) {
+    if (group.length === 1) {
+      let email = `${firstSlug}@smavo.sch.id`;
+      if (usedEmails.has(email)) {
+        const parts = extractParts(group[0].fullName);
+        const lSlug = parts.length > 1 ? toSlug(parts[parts.length - 1]) : '';
+        email = lSlug ? `${firstSlug}.${lSlug}@smavo.sch.id` : `${firstSlug}1@smavo.sch.id`;
+      }
+      usedEmails.add(email);
+      emailAssignments.set(group[0].ref, email);
+    } else {
+      for (const entry of group) {
+        const parts = extractParts(entry.fullName);
+        const lSlug = parts.length > 1 ? toSlug(parts[parts.length - 1]) : '';
+        let email = lSlug ? `${firstSlug}.${lSlug}@smavo.sch.id` : `${firstSlug}@smavo.sch.id`;
+        let counter = 2;
+        while (usedEmails.has(email)) {
+          email = `${firstSlug}.${lSlug || ''}${counter}@smavo.sch.id`;
+          counter++;
+        }
+        usedEmails.add(email);
+        emailAssignments.set(entry.ref, email);
+      }
+    }
+  }
+
   // ─── TEACHER ACCOUNTS ──────────────────────────────────
   console.log('👤 Creating teacher accounts...');
   const guruPassword = await bcrypt.hash('guru123', 12);
   let teacherAccountCount = 0;
 
   for (const t of realTeachers) {
-    const email = `guru${t.code}@smavo.sch.id`;
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const email = emailAssignments.get(t) || `guru${t.code}@smavo.sch.id`;
+    const existing = await prisma.user.findFirst({ where: { profile: { fullName: t.fullName } } });
     if (!existing) {
       await prisma.user.create({
         data: {
@@ -623,15 +698,9 @@ async function main() {
   const siswaPassword = await bcrypt.hash('siswa123', 12);
   let studentAccountCount = 0;
 
-  const allStudentsForAccounts = await prisma.student.findMany({
-    where: { isActive: true },
-    select: { id: true, nisn: true, fullName: true },
-    take: 750,
-  });
-
   for (const s of allStudentsForAccounts) {
-    const email = `siswa.${s.nisn}@smavo.sch.id`;
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const email = emailAssignments.get(s) || `siswa.${s.nisn}@smavo.sch.id`;
+    const existing = await prisma.user.findFirst({ where: { profile: { fullName: s.fullName } } });
     if (!existing) {
       await prisma.user.create({
         data: {

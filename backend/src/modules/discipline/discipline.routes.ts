@@ -84,15 +84,21 @@ function getCardStatus(total: number): { card: string; color: string; action: st
 // GET /api/discipline/me — current logged-in student's violations
 router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email: string = (req as any).user?.email ?? '';
-    const nisnMatch = email.match(/^siswa\.(\d+)@/);
-    if (!nisnMatch) {
+    const userId: string = (req as any).user?.userId ?? '';
+    const role: string = (req as any).user?.role ?? '';
+    if (role !== 'SISWA') {
       return res.status(403).json({ success: false, message: 'Endpoint ini hanya untuk akun siswa' });
     }
-    const nisn = nisnMatch[1];
 
-    const student = await prisma.student.findUnique({
-      where: { nisn },
+    // Find student by matching profile fullName
+    const profile = await prisma.profile.findUnique({
+      where: { userId },
+      select: { fullName: true },
+    });
+    if (!profile) throw new NotFoundError('Profil pengguna tidak ditemukan');
+
+    const student = await prisma.student.findFirst({
+      where: { fullName: profile.fullName, isActive: true },
       select: {
         id: true, nisn: true, fullName: true, gender: true, phone: true,
         class: { select: { id: true, name: true } },

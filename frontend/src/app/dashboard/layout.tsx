@@ -21,6 +21,15 @@ const NAV = [
   { name: 'Akun & Role', href: '/dashboard/users', icon: UserCog, adminOnly: true },
 ];
 
+// Nav items visible to SISWA role
+const SISWA_NAV = [
+  { name: 'Ringkasan', href: '/dashboard', icon: LayoutGrid },
+  { name: 'Kedisiplinan', href: '/dashboard/discipline', icon: ShieldAlert },
+];
+
+// Routes that SISWA is allowed to access
+const SISWA_ALLOWED_ROUTES = ['/dashboard', '/dashboard/discipline'];
+
 const TITLES: Record<string, string> = {
   '/dashboard': 'Ringkasan',
   '/dashboard/assets': 'Inventaris Aset',
@@ -50,9 +59,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const raw = localStorage.getItem('smavo_user');
     if (!token) { router.push('/login'); return; }
     if (raw) {
-      try { setUser(JSON.parse(raw)); } catch { /* ignore */ }
+      try {
+        const parsed = JSON.parse(raw);
+        setUser(parsed);
+        // SISWA role: redirect if accessing non-allowed routes
+        if (parsed.role === 'SISWA' && !SISWA_ALLOWED_ROUTES.includes(pathname)) {
+          router.push('/dashboard');
+        }
+      } catch { /* ignore */ }
     }
-  }, [router]);
+  }, [router, pathname]);
 
   const logout = () => {
     localStorage.removeItem('smavo_token');
@@ -94,12 +110,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Nav */}
         <nav className="flex-1 px-2 pt-3 pb-3 space-y-0.5 overflow-y-auto">
           <p className="px-3 mb-1.5 text-[9px] font-semibold text-muted uppercase tracking-widest">Menu</p>
-          {NAV.filter(item => {
+          {(user?.role === 'SISWA' ? SISWA_NAV : NAV.filter(item => {
             if ('adminOnly' in item) return user?.role === 'ADMIN';
             if (!('feature' in item)) return true; // dashboard, no feature required
             if (user?.role === 'ADMIN') return true; // admin sees all
             return (user?.allowedFeatures ?? []).includes(item.feature!);
-          }).map((item) => {
+          })).map((item) => {
             const active = pathname === item.href;
             return (
               <Link
