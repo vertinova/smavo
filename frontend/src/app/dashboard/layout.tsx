@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import {
   LayoutGrid, Package, Wallet, GraduationCap, Users, FileText,
   LogOut, UserCog, ShieldAlert, Sun, Moon, Palette, KeyRound,
-  Settings, MoreHorizontal,
+  Settings, MoreHorizontal, AArrowUp, AArrowDown, Type,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type Theme } from '@/lib/theme';
@@ -53,6 +53,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDefaultPwWarning, setShowDefaultPwWarning] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large'>('normal');
+
+  const FONT_SIZES = [
+    { value: 'small' as const, label: 'Kecil', icon: AArrowDown },
+    { value: 'normal' as const, label: 'Normal', icon: Type },
+    { value: 'large' as const, label: 'Besar', icon: AArrowUp },
+  ];
+
+  const FONT_SIZE_CLASS: Record<string, string> = {
+    small: 'text-[13px]',
+    normal: 'text-[15px]',
+    large: 'text-[17px]',
+  };
 
   const THEMES: { value: Theme; icon: typeof Sun; label: string }[] = [
     { value: 'light', icon: Sun, label: 'Light' },
@@ -63,6 +76,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     // PWA gate: only allow dashboard in standalone/installed mode
     if (!isStandaloneMode()) { router.replace('/'); return; }
+
+    // Load saved font size
+    const savedFontSize = localStorage.getItem('smavo_font_size') as 'small' | 'normal' | 'large';
+    if (savedFontSize && ['small', 'normal', 'large'].includes(savedFontSize)) {
+      setFontSize(savedFontSize);
+    }
 
     const token = localStorage.getItem('smavo_token');
     const raw = localStorage.getItem('smavo_user');
@@ -89,6 +108,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     localStorage.removeItem('smavo_user');
     localStorage.removeItem('smavo_pw_changed');
     router.push('/login');
+  };
+
+  const changeFontSize = (size: 'small' | 'normal' | 'large') => {
+    setFontSize(size);
+    localStorage.setItem('smavo_font_size', size);
   };
 
   const initials = user?.fullName
@@ -192,6 +216,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ))}
           </div>
 
+          <div className="hidden lg:flex items-center gap-0.5 bg-surface rounded-lg p-0.5 border border-border">
+            {FONT_SIZES.map((f) => (
+              <button key={f.value} onClick={() => changeFontSize(f.value)}
+                className={cn('p-1.5 rounded-md transition-all duration-200',
+                  fontSize === f.value ? 'bg-accent/10 text-accent shadow-sm' : 'text-muted hover:text-foreground'
+                )} title={f.label}>
+                <f.icon size={14} strokeWidth={fontSize === f.value ? 2 : 1.5} />
+              </button>
+            ))}
+          </div>
+
           <div className="hidden lg:flex items-center gap-3">
             <div className="w-7 h-7 rounded-lg header-avatar flex items-center justify-center">
               <span className="text-white text-[10px] font-bold">{initials}</span>
@@ -205,7 +240,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 lg:pb-6 animate-fadeIn">
+        <main className={cn('flex-1 overflow-y-auto p-4 lg:p-6 pb-24 lg:pb-6 animate-fadeIn', FONT_SIZE_CLASS[fontSize])}>
           {children}
         </main>
       </div>
@@ -295,6 +330,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                 </div>
               )}
+
+              <div className="mb-3">
+                <p className="text-[10px] text-muted uppercase tracking-widest font-semibold px-1 mb-2">Ukuran Teks</p>
+                <div className="flex gap-2">
+                  {FONT_SIZES.map((f) => (
+                    <button key={f.value} onClick={() => changeFontSize(f.value)}
+                      className={cn(
+                        'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all',
+                        fontSize === f.value ? 'bg-accent/10 text-accent border border-accent/20' : 'bg-foreground/[0.03] text-muted-foreground border border-transparent'
+                      )}>
+                      <f.icon size={14} /> {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className="mb-3">
                 <p className="text-[10px] text-muted uppercase tracking-widest font-semibold px-1 mb-2">Tema</p>
