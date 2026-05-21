@@ -14,6 +14,7 @@ import classRoutes from './modules/admin/class.routes.js';
 import letterRoutes from './modules/letter/letter.routes.js';
 import userRoutes from './modules/admin/user.routes.js';
 import disciplineRoutes from './modules/discipline/discipline.routes.js';
+import queueRoutes from './modules/queue/queue.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/classes', classRoutes);
 app.use('/api/letters', letterRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/discipline', disciplineRoutes);
+app.use('/api/queue', queueRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

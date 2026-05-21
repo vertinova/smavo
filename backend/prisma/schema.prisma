@@ -100,6 +100,24 @@ enum LetterType {
   LAINNYA
 }
 
+enum QueueTicketStatus {
+  WAITING
+  CALLING
+  SERVING
+  DONE
+  SKIPPED
+}
+
+enum QueueEventType {
+  CREATED
+  CALLED
+  RECALLED
+  SKIPPED
+  DONE
+  PAUSED
+  RESUMED
+}
+
 // ─── AUTH & USER ────────────────────────────────────────
 
 model User {
@@ -431,4 +449,65 @@ model Letter {
 
   @@index([letterType])
   @@map("letters")
+}
+
+// â”€â”€â”€ DIGITAL QUEUE SYSTEM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+model QueueContainer {
+  id        String   @id @default(cuid())
+  name      String
+  service   String
+  code      String
+  operator  String?
+  isPaused  Boolean  @default(false)
+  accent    String   @default("cyan")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets QueueTicket[]
+  events  QueueEvent[]
+
+  @@index([service])
+  @@map("queue_containers")
+}
+
+model QueueTicket {
+  id                   String            @id @default(cuid())
+  number               String
+  visitorName          String
+  service              String
+  containerId          String
+  status               QueueTicketStatus @default(WAITING)
+  estimatedWaitMinutes Int               @default(0)
+  createdAt            DateTime          @default(now())
+  calledAt             DateTime?
+  finishedAt           DateTime?
+  skippedAt            DateTime?
+
+  container QueueContainer @relation(fields: [containerId], references: [id])
+  events    QueueEvent[]
+
+  @@unique([number, createdAt])
+  @@index([containerId, status])
+  @@index([createdAt])
+  @@map("queue_tickets")
+}
+
+model QueueEvent {
+  id          String         @id @default(cuid())
+  type        QueueEventType
+  message     String
+  ticketId    String?
+  ticketNumber String?
+  containerId String?
+  actorId     String?
+  createdAt   DateTime       @default(now())
+
+  ticket    QueueTicket?    @relation(fields: [ticketId], references: [id])
+  container QueueContainer? @relation(fields: [containerId], references: [id])
+
+  @@index([type])
+  @@index([createdAt])
+  @@map("queue_events")
 }

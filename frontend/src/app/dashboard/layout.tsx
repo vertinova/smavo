@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   LayoutGrid, Package, Wallet, GraduationCap, Users, FileText,
   LogOut, UserCog, ShieldAlert, Sun, Moon, Palette, KeyRound,
-  Settings, MoreHorizontal, AArrowUp, AArrowDown, Type,
+  Settings, MoreHorizontal, AArrowUp, AArrowDown, Type, RadioTower,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type Theme } from '@/lib/theme';
@@ -22,6 +22,7 @@ const NAV = [
   { name: 'Data Guru', href: '/dashboard/teachers', icon: Users, feature: 'teachers' },
   { name: 'Persuratan', href: '/dashboard/letters', icon: FileText, feature: 'letters' },
   { name: 'Kedisiplinan', href: '/dashboard/discipline', icon: ShieldAlert, feature: 'discipline' },
+  { name: 'Antrian', href: '/dashboard/queue', icon: RadioTower },
   { name: 'Akun & Role', href: '/dashboard/users', icon: UserCog, adminOnly: true },
 ];
 
@@ -42,6 +43,7 @@ const TITLES: Record<string, string> = {
   '/dashboard/teachers': 'Data Guru',
   '/dashboard/letters': 'Persuratan',
   '/dashboard/discipline': 'Kedisiplinan',
+  '/dashboard/queue': 'Nomor Antrian',
   '/dashboard/users': 'Akun & Role',
 };
 

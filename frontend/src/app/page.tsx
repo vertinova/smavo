@@ -6,11 +6,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { isStandaloneMode } from '@/lib/pwa';
+import QueueTicketStudio from '@/components/QueueTicketStudio';
 import {
   ArrowRight, Package, Wallet, GraduationCap, Users, FileText,
   ShieldAlert, BarChart3, CheckCircle2, Zap, Lock, ChevronDown,
   Sparkles, MousePointer2, Globe, Award, BookOpen, Building2,
-  MapPin, Phone, Mail, Star, Heart, Rocket, Download,
+  MapPin, Phone, Mail, Star, Heart, Rocket, Ticket,
 } from 'lucide-react';
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
@@ -124,46 +125,15 @@ export default function HomePage() {
     fetch('/lottie-chatbot.json').then(r => r.json()).then(setLottieData).catch(() => {});
   }, []);
 
-  // PWA install prompt
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     // If already running as PWA → check session
     if (isStandaloneMode()) {
       const token = localStorage.getItem('smavo_token');
       router.replace(token ? '/dashboard' : '/login');
-      return;
     }
 
-    // Detect iOS for manual install instructions
-    const ua = navigator.userAgent;
-    setIsIOS(/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-
-    const handler = (e: any) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
-
-    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, [router]);
-
-  const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
-    }
-    setInstallPrompt(null);
-  };
 
   return (
     <div className="min-h-screen bg-[#f8faff] relative overflow-hidden">
@@ -200,16 +170,15 @@ export default function HomePage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <a href="#tentang" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Tentang</a>
             <a href="#fitur" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Fitur</a>
-            {installPrompt && !isInstalled && (
-              <button
-                onClick={handleInstall}
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:scale-[1.03] transition-all duration-300"
-              >
-                <Download size={14} />
-                <span className="hidden sm:inline">Install App</span>
-                <span className="sm:hidden">Install</span>
-              </button>
-            )}
+            <a href="#antrian" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Antrian</a>
+            <a
+              href="#antrian"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:scale-[1.03] transition-all duration-300"
+            >
+              <Ticket size={14} />
+              <span className="hidden sm:inline">Ambil Antrian</span>
+              <span className="sm:hidden">Antrian</span>
+            </a>
           </div>
         </div>
       </nav>
@@ -236,38 +205,16 @@ export default function HomePage() {
             Super App &middot; SMAN 2 Cibinong
           </p>
 
-          {/* CTA - Install */}
+          {/* CTA - Queue */}
           <div className="animate-fade-up-delay-2 flex flex-col items-center gap-3">
-            {installPrompt && !isInstalled ? (
-              <button
-                onClick={handleInstall}
-                className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-10 py-4 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
-                <Download size={18} className="relative z-10" />
-                <span className="relative z-10">Install Aplikasi</span>
-              </button>
-            ) : isIOS ? (
-              <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-5 max-w-xs text-center shadow-lg">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-3">
-                  <Download size={18} className="text-white" />
-                </div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">Install di iPhone / iPad</p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Ketuk tombol <span className="inline-flex items-center gap-0.5 font-semibold text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg> Share</span> di Safari, lalu pilih <strong>&quot;Add to Home Screen&quot;</strong>
-                </p>
-              </div>
-            ) : !isInstalled ? (
-              <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl p-5 max-w-xs text-center shadow-lg">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-3">
-                  <Download size={18} className="text-white" />
-                </div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">Install Aplikasi</p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Buka di <strong>Chrome</strong> atau <strong>Edge</strong>, lalu ketuk ikon install di address bar untuk menginstall SMAVO.
-                </p>
-              </div>
-            ) : null}
+            <a
+              href="#antrian"
+              className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-10 py-4 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
+              <Ticket size={18} className="relative z-10" />
+              <span className="relative z-10">Ambil Antrian</span>
+            </a>
 
             <a
               href="#tentang"
@@ -442,6 +389,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <QueueTicketStudio />
+
       {/* ═══ WHY SUPER APP ═══ */}
       <section ref={whyRef} className="relative z-10 py-14 sm:py-28">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -557,6 +506,7 @@ export default function HomePage() {
               <div className="space-y-2">
                 <a href="#tentang" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Tentang SMAVO</a>
                 <a href="#fitur" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Fitur Super App</a>
+                <a href="#antrian" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Nomor Antrian</a>
                 <Link href="/login" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Masuk Dashboard</Link>
               </div>
             </div>
