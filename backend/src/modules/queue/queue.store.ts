@@ -67,11 +67,10 @@ type QueueSnapshot = {
 const accents = ['cyan', 'violet', 'emerald', 'amber', 'rose'];
 
 let containers: QueueContainer[] = [
-  { id: 'container-1', name: 'Container 1', service: 'SPMB', code: 'SPMB', operator: 'Petugas SPMB', isPaused: false, accent: 'cyan' },
-  { id: 'container-2', name: 'Container 2', service: 'Tata Usaha', code: 'TU', operator: 'Petugas TU', isPaused: false, accent: 'violet' },
-  { id: 'container-3', name: 'Container 3', service: 'BK', code: 'BK', operator: 'Petugas BK', isPaused: false, accent: 'emerald' },
-  { id: 'container-4', name: 'Container 4', service: 'Legalisir', code: 'LGL', operator: 'Petugas Legalisir', isPaused: false, accent: 'amber' },
-  { id: 'container-5', name: 'Container 5', service: 'Informasi Akademik', code: 'IA', operator: 'Petugas Akademik', isPaused: false, accent: 'rose' },
+  { id: 'container-1', name: 'Operator 1', service: 'SPMB', code: 'SPMB', operator: 'Operator 1', isPaused: false, accent: 'cyan' },
+  { id: 'container-2', name: 'Operator 2', service: 'SPMB', code: 'SPMB', operator: 'Operator 2', isPaused: false, accent: 'violet' },
+  { id: 'container-3', name: 'Operator 3', service: 'SPMB', code: 'SPMB', operator: 'Operator 3', isPaused: false, accent: 'emerald' },
+  { id: 'container-4', name: 'Operator 4', service: 'SPMB', code: 'SPMB', operator: 'Operator 4', isPaused: false, accent: 'amber' },
 ];
 
 let tickets: QueueTicket[] = [];
@@ -97,19 +96,6 @@ function makeId(prefix: string) {
 function normalizeCode(value: string, fallback: string) {
   const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
   return cleaned || fallback;
-}
-
-function makeUniqueCode(code: string, used: Set<string>, index: number) {
-  if (!used.has(code)) return code;
-
-  const base = code.slice(0, 6) || `C${index + 1}`;
-  let suffix = 2;
-  let nextCode = `${base}${suffix}`;
-  while (used.has(nextCode)) {
-    suffix += 1;
-    nextCode = `${base}${suffix}`;
-  }
-  return nextCode.slice(0, 8);
 }
 
 function addEvent(event: Omit<QueueEvent, 'id' | 'createdAt'>) {
@@ -208,7 +194,6 @@ export function getQueueSnapshot(): QueueSnapshot {
 
 export function updateQueueContainers(inputs: QueueContainerInput[]) {
   const usedIds = new Set<string>();
-  const usedCodes = new Set<string>();
 
   containers = inputs.map((input, index) => {
     const fallbackId = `container-${index + 1}`;
@@ -218,15 +203,14 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
 
     const existing = containers.find((container) => container.id === id);
     const fallbackCode = `C${index + 1}`;
-    const code = makeUniqueCode(normalizeCode(input.code, fallbackCode), usedCodes, index);
-    usedCodes.add(code);
+    const code = normalizeCode(input.code, fallbackCode);
 
     return {
       id,
-      name: input.name.trim() || `Container ${index + 1}`,
-      service: input.service.trim() || `Layanan ${index + 1}`,
+      name: input.name.trim() || `Operator ${index + 1}`,
+      service: input.service.trim() || 'SPMB',
       code,
-      operator: input.operator?.trim() || `Petugas ${input.service.trim() || `Container ${index + 1}`}`,
+      operator: input.operator?.trim() || `Operator ${index + 1}`,
       isPaused: input.isPaused ?? existing?.isPaused ?? false,
       accent: accents.includes(input.accent ?? '') ? input.accent! : accents[index % accents.length],
     };
@@ -234,7 +218,7 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
 
   addEvent({
     type: 'RESUMED',
-    message: `Konfigurasi container diperbarui menjadi ${containers.length} container`,
+    message: `Konfigurasi operator diperbarui menjadi ${containers.length} operator`,
   });
 
   return containers;
