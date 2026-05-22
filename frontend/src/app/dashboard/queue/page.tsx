@@ -32,6 +32,8 @@ import {
 } from 'recharts';
 import {
   pauseContainer,
+  formatQueueNumber,
+  formatQueueService,
   queueAction,
   speakQueueCall,
   unlockQueueAudio,
@@ -74,10 +76,10 @@ function makeNewContainer(index: number): QueueContainerConfig {
   const number = index + 1;
   return {
     id: `container-${number}`,
-    name: `Container ${number}`,
-    service: `Layanan ${number}`,
-    code: `C${number}`,
-    operator: `Petugas ${number}`,
+    name: `Operator ${number}`,
+    service: 'SPMB',
+    code: 'SPMB',
+    operator: `Operator ${number}`,
     isPaused: false,
     accent: accentOptions[index % accentOptions.length].value,
   };
@@ -144,7 +146,7 @@ function ContainerCard({
       <div className="relative flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">{container.name}</p>
-          <h3 className="mt-1 text-xl font-black text-white">{container.service}</h3>
+          <h3 className="mt-1 text-xl font-black text-white">{formatQueueService(container.service)}</h3>
           <p className="mt-1 text-xs text-slate-400">{container.operator}</p>
         </div>
         <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ${container.isPaused ? 'bg-amber-400/15 text-amber-200' : 'bg-emerald-400/15 text-emerald-200'}`}>
@@ -161,7 +163,7 @@ function ContainerCard({
           animate={{ scale: 1, opacity: 1 }}
           className={`mt-2 text-5xl font-black leading-none tracking-normal ${active ? 'text-white drop-shadow-[0_0_22px_rgba(34,211,238,0.45)]' : 'text-slate-600'}`}
         >
-          {active?.number ?? '---'}
+          {active ? formatQueueNumber(active.number) : '---'}
         </motion.p>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-2xl bg-black/20 p-3">
@@ -236,12 +238,12 @@ function ContainerSettingsPanel({
             <Settings size={13} />
             Pengaturan Admin
           </div>
-          <h2 className={`text-xl font-black ${ui.text}`}>Container Layanan</h2>
+          <h2 className={`text-xl font-black ${ui.text}`}>Operator Layanan</h2>
           <p className={`mt-1 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Ubah jumlah container, nama loket, layanan, kode nomor, operator, dan warna tampilan. Kode dipakai sebagai prefix nomor antrian.
+            Ubah jumlah operator, nama loket, layanan, kode nomor, operator, dan warna tampilan. Kode dipakai sebagai prefix nomor antrian.
           </p>
           <p className={`mt-2 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Cara pakai: ubah angka <span className="font-black">Jumlah</span> untuk tambah/kurangi container, edit kolom nama/layanan, lalu klik <span className="font-black">Simpan Container</span>.
+            Cara pakai: ubah angka <span className="font-black">Jumlah</span> untuk tambah/kurangi operator, edit kolom nama/layanan, lalu klik <span className="font-black">Simpan Operator</span>.
           </p>
         </div>
 
@@ -264,7 +266,7 @@ function ContainerSettingsPanel({
             className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-60"
           >
             <Save size={16} />
-            {busy ? 'Menyimpan...' : 'Simpan Container'}
+            {busy ? 'Menyimpan...' : 'Simpan Operator'}
           </button>
         </div>
       </div>
@@ -273,12 +275,12 @@ function ContainerSettingsPanel({
         {draft.map((container, index) => (
           <div key={`${container.id}-${index}`} className={`grid gap-3 rounded-3xl border p-4 lg:grid-cols-[1.1fr_1.1fr_0.7fr_1fr_0.75fr_auto] ${ui.subPanel}`}>
             <label className="min-w-0">
-              <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Nama Container</span>
+              <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Nama Operator</span>
               <input
                 value={container.name}
                 onChange={(event) => onChange(index, { name: event.target.value })}
                 className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                placeholder="Container 1"
+                placeholder="Operator 1"
               />
             </label>
 
@@ -436,17 +438,17 @@ export default function QueueDashboardPage() {
     try {
       const result = await updateQueueContainers(containerDraft.map((container, index) => ({
         ...container,
-        name: container.name.trim() || `Container ${index + 1}`,
-        service: container.service.trim() || `Layanan ${index + 1}`,
-        code: container.code.trim() || `C${index + 1}`,
-        operator: container.operator.trim() || `Petugas ${index + 1}`,
+        name: container.name.trim() || `Operator ${index + 1}`,
+        service: container.service.trim() || 'SPMB',
+        code: container.code.trim() || 'SPMB',
+        operator: container.operator.trim() || `Operator ${index + 1}`,
       })));
       setSnapshot(result.snapshot);
       setContainerDraft(result.snapshot.containers.map(toContainerConfig));
       setSettingsDirty(false);
-      setSettingsMessage('Konfigurasi container berhasil disimpan.');
+      setSettingsMessage('Konfigurasi operator berhasil disimpan.');
     } catch (error: any) {
-      setSettingsMessage(error.response?.data?.message || 'Konfigurasi container gagal disimpan.');
+      setSettingsMessage(error.response?.data?.message || 'Konfigurasi operator gagal disimpan.');
     } finally {
       setSettingsBusy(false);
     }
@@ -487,7 +489,7 @@ export default function QueueDashboardPage() {
           </div>
           <h1 className={`text-3xl font-black tracking-tight lg:text-5xl ${ui.text}`}>Command Center Antrian</h1>
           <p className={`mt-2 max-w-2xl text-sm ${ui.muted}`}>
-            Dashboard petugas untuk memanggil, melewati, menyelesaikan, dan memonitor seluruh container pelayanan SMAN 2 Cibinong secara realtime.
+            Dashboard petugas untuk memanggil, melewati, menyelesaikan, dan memonitor seluruh operator pelayanan SPMB SMAN 2 Cibinong secara realtime.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -541,10 +543,10 @@ export default function QueueDashboardPage() {
 
       <div className="relative grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total Hari Ini" value={snapshot.analytics.totalToday} icon={UsersRound} hint="Semua tiket yang dibuat hari ini" ui={ui} />
-        <StatCard label="Sedang Dipanggil" value={latestCalled?.number ?? '-'} icon={Megaphone} hint={latestCalled?.service ?? 'Belum ada panggilan aktif'} ui={ui} />
+        <StatCard label="Sedang Dipanggil" value={latestCalled ? formatQueueNumber(latestCalled.number) : '-'} icon={Megaphone} hint={latestCalled ? formatQueueService(latestCalled.service) : 'Belum ada panggilan aktif'} ui={ui} />
         <StatCard label="Selesai" value={snapshot.analytics.done} icon={CheckCircle2} hint="Layanan berhasil selesai" ui={ui} />
         <StatCard label="Rata-rata Tunggu" value={`${snapshot.analytics.averageWaitMinutes}m`} icon={Clock3} hint={`Peak hour: ${snapshot.analytics.peakHour}`} ui={ui} />
-        <StatCard label="Container Aktif" value={snapshot.analytics.activeContainers} icon={Activity} hint="Loket/container yang tidak pause" ui={ui} />
+        <StatCard label="Operator Aktif" value={snapshot.analytics.activeContainers} icon={Activity} hint="Operator yang tidak pause" ui={ui} />
       </div>
 
       <div className="relative mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -591,8 +593,8 @@ export default function QueueDashboardPage() {
               {snapshot.tickets.slice(0, 14).map((ticket) => (
                 <div key={ticket.id} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${ui.subPanel}`}>
                   <div>
-                    <p className={`font-black ${ui.text}`}>{ticket.number}</p>
-                    <p className={`text-xs ${ui.muted}`}>{ticket.visitorName} - {ticket.service}</p>
+                    <p className={`font-black ${ui.text}`}>{formatQueueNumber(ticket.number)}</p>
+                    <p className={`text-xs ${ui.muted}`}>{ticket.visitorName} - {formatQueueService(ticket.service)}</p>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-[10px] font-black ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-white/10 text-slate-300'}`}>{ticket.status}</span>
                 </div>

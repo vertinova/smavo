@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Maximize2, RadioTower, Volume2 } from 'lucide-react';
-import { speakQueueCall, unlockQueueAudio, type QueueContainer } from '@/lib/queue';
+import { formatQueueNumber, formatQueueService, speakQueueCall, unlockQueueAudio, type QueueContainer } from '@/lib/queue';
 import { useQueueStore } from '@/lib/queueStore';
 
 type DisplayMode = 'grid' | 'focus' | 'tv';
@@ -50,16 +50,16 @@ function ServiceTile({ container, featured = false }: { container: QueueContaine
   return (
     <motion.div
       layout
-      className={`relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.07] shadow-2xl shadow-black/30 backdrop-blur-xl ${featured ? 'p-10' : 'p-6'}`}
+      className={`relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-cyan-100/80 bg-white/90 shadow-2xl shadow-cyan-200/40 backdrop-blur-xl ${featured ? 'p-7 xl:p-9' : 'p-4 xl:p-5'}`}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent to-violet-500/10" />
-      {active ? <div className="absolute inset-0 animate-pulse bg-cyan-300/5" /> : null}
-      <div className="relative flex items-start justify-between gap-6">
-        <div>
-          <p className={`${featured ? 'text-lg' : 'text-xs'} font-black uppercase tracking-[0.32em] text-cyan-200`}>
-            {featured ? 'NOW SERVING' : container.name}
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-100/80 via-white/30 to-amber-100/70" />
+      {active ? <div className="absolute inset-0 animate-pulse bg-cyan-200/25" /> : null}
+      <div className="relative flex min-h-0 items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className={`${featured ? 'text-base xl:text-lg' : 'text-[0.68rem] xl:text-xs'} truncate font-black uppercase tracking-[0.28em] text-cyan-700`}>
+            {featured ? 'SEDANG DIPANGGIL' : container.name}
           </p>
-          <h2 className={`${featured ? 'mt-4 text-7xl xl:text-8xl' : 'mt-2 text-4xl'} font-black leading-none tracking-normal text-white drop-shadow-[0_0_34px_rgba(34,211,238,0.35)]`}>
+          <h2 className={`${featured ? 'mt-3 text-[clamp(4.5rem,9vw,8rem)]' : 'mt-2 text-[clamp(2.2rem,3.1vw,3.8rem)]'} break-words font-black leading-none tracking-normal text-slate-950 drop-shadow-[0_0_28px_rgba(14,165,233,0.18)]`}>
             <AnimatePresence mode="wait">
               <motion.span
                 key={active?.number ?? `${container.id}-empty`}
@@ -68,27 +68,27 @@ function ServiceTile({ container, featured = false }: { container: QueueContaine
                 exit={{ opacity: 0, y: -30, scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 180, damping: 20 }}
               >
-                {active?.number ?? '---'}
+                {active ? formatQueueNumber(active.number) : '---'}
               </motion.span>
             </AnimatePresence>
           </h2>
-          <p className={`${featured ? 'mt-5 text-3xl' : 'mt-3 text-lg'} font-black text-slate-200`}>{container.name}</p>
-          <p className={`${featured ? 'text-2xl' : 'text-sm'} font-bold text-slate-400`}>{container.service}</p>
+          <p className={`${featured ? 'mt-4 text-2xl xl:text-3xl' : 'mt-2 text-base xl:text-lg'} truncate font-black text-slate-900`}>{container.name}</p>
+          <p className={`${featured ? 'text-xl xl:text-2xl' : 'text-xs xl:text-sm'} truncate font-bold text-slate-600`}>{formatQueueService(container.service)}</p>
         </div>
-        <div className="rounded-full bg-emerald-400/15 px-4 py-2 text-sm font-black text-emerald-200">
+        <div className="shrink-0 rounded-full bg-emerald-100 px-3 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-200 xl:px-4 xl:text-sm">
           {container.isPaused ? 'PAUSE' : 'OPEN'}
         </div>
       </div>
 
-      <div className={`relative ${featured ? 'mt-10' : 'mt-6'}`}>
-        <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Next Queue</p>
-        <div className="mt-3 flex flex-wrap gap-3">
+      <div className={`relative min-h-0 overflow-hidden ${featured ? 'mt-8 xl:mt-10' : 'mt-4 xl:mt-5'}`}>
+        <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-slate-500 xl:text-xs">Antrian Berikutnya</p>
+        <div className="mt-3 flex flex-wrap gap-2 xl:gap-3">
           {container.nextTickets.slice(0, featured ? 5 : 3).map((ticket) => (
-            <span key={ticket.id} className={`${featured ? 'px-5 py-3 text-2xl' : 'px-3 py-2 text-sm'} rounded-2xl bg-white/10 font-black text-white`}>
-              {ticket.number}
+            <span key={ticket.id} className={`${featured ? 'px-4 py-2 text-xl xl:px-5 xl:py-3 xl:text-2xl' : 'px-3 py-2 text-xs xl:text-sm'} rounded-2xl bg-cyan-50 font-black text-cyan-900 ring-1 ring-cyan-100`}>
+              {formatQueueNumber(ticket.number)}
             </span>
           ))}
-          {!container.nextTickets.length ? <span className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-bold text-slate-400">Menunggu antrian masuk</span> : null}
+          {!container.nextTickets.length ? <span className="rounded-2xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-500">Menunggu antrian masuk</span> : null}
         </div>
       </div>
     </motion.div>
@@ -147,46 +147,46 @@ export default function QueueDisplayPage() {
     : focusedContainer;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+    <main className="relative h-screen overflow-hidden bg-sky-50 text-slate-950">
       <div className="absolute inset-0">
-        <div className="absolute left-[8%] top-[12%] h-[34rem] w-[34rem] animate-pulse rounded-full bg-cyan-500/20 blur-[120px]" />
-        <div className="absolute bottom-[-8%] right-[8%] h-[36rem] w-[36rem] rounded-full bg-violet-500/20 blur-[120px]" />
+        <div className="absolute left-[8%] top-[12%] h-[34rem] w-[34rem] animate-pulse rounded-full bg-cyan-300/35 blur-[120px]" />
+        <div className="absolute bottom-[-8%] right-[8%] h-[36rem] w-[36rem] rounded-full bg-amber-200/45 blur-[120px]" />
         <div
-          className="absolute inset-0 opacity-[0.08]"
+          className="absolute inset-0 opacity-[0.2]"
           style={{
-            backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(#0ea5e9 1px, transparent 1px), linear-gradient(90deg, #0ea5e9 1px, transparent 1px)',
             backgroundSize: '72px 72px',
           }}
         />
       </div>
 
-      <header className="relative z-10 flex items-center justify-between gap-6 px-8 py-6">
+      <header className="relative z-10 flex h-[104px] items-center justify-between gap-4 px-6 py-4 xl:px-8">
         <div className="flex items-center gap-4">
-          <Image src="/logo-smavo.jpeg" alt="SMAN 2 Cibinong" width={64} height={64} className="h-16 w-16 rounded-2xl object-cover shadow-xl" />
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.28em] text-cyan-200">SMAN 2 Cibinong</p>
-            <h1 className="text-3xl font-black tracking-tight">Realtime Queue Display</h1>
+          <Image src="/logo-smavo.jpeg" alt="SMAN 2 Cibinong" width={64} height={64} className="h-14 w-14 rounded-2xl object-cover shadow-xl xl:h-16 xl:w-16" />
+          <div className="min-w-0">
+            <p className="text-sm font-black uppercase tracking-[0.28em] text-cyan-700">SMAN 2 Cibinong</p>
+            <h1 className="truncate text-2xl font-black tracking-tight xl:text-3xl">Realtime Queue Display</h1>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-5xl font-black tracking-normal">{formatClock(clock)}</p>
-          <p className="mt-1 text-sm font-bold text-slate-400">{formatDate(clock)}</p>
+        <div className="shrink-0 text-right">
+          <p className="text-4xl font-black tracking-normal xl:text-5xl">{formatClock(clock)}</p>
+          <p className="mt-1 text-sm font-bold text-slate-500">{formatDate(clock)}</p>
         </div>
       </header>
 
-      <section className="relative z-10 px-8 pb-24">
+      <section className="relative z-10 h-[calc(100vh-168px)] px-6 pb-4 xl:px-8">
         {mode === 'grid' ? (
-          <div className="grid gap-5 xl:grid-cols-3">
+          <div className="grid h-full min-h-0 auto-rows-fr gap-4 overflow-hidden xl:grid-cols-3 xl:gap-5">
             {snapshot.containers.map((container) => (
               <ServiceTile key={container.id} container={container} featured={container.id === featuredContainer?.id} />
             ))}
           </div>
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+          <div className="grid h-full min-h-0 grid-rows-[minmax(0,1.35fr)_minmax(0,0.65fr)] gap-5 overflow-hidden xl:grid-cols-[1.35fr_0.65fr] xl:grid-rows-none xl:gap-6">
             {featuredContainer ? <ServiceTile container={featuredContainer} featured /> : null}
-            <div className="grid gap-4">
+            <div className="grid min-h-0 grid-rows-4 gap-3 overflow-hidden xl:gap-4">
               {snapshot.containers.filter((container) => container.id !== featuredContainer?.id).slice(0, 4).map((container) => (
-                <button key={container.id} onClick={() => setFocusId(container.id)} className="text-left">
+                <button key={container.id} onClick={() => setFocusId(container.id)} className="h-full min-h-0 text-left">
                   <ServiceTile container={container} />
                 </button>
               ))}
@@ -195,36 +195,36 @@ export default function QueueDisplayPage() {
         )}
       </section>
 
-      <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-black/45 py-4 backdrop-blur-xl">
-        <div className="animate-[ticker_34s_linear_infinite] whitespace-nowrap text-2xl font-black tracking-normal text-cyan-100">
+      <div className="absolute bottom-0 left-0 right-0 z-20 flex h-16 items-center border-t border-cyan-100 bg-white/85 shadow-[0_-18px_50px_rgba(14,165,233,0.12)] backdrop-blur-xl">
+        <div className="animate-[ticker_34s_linear_infinite] whitespace-nowrap text-xl font-black tracking-normal text-cyan-800 xl:text-2xl">
           {tickerText}     •     {tickerText}
         </div>
       </div>
 
-      <div className="absolute bottom-20 left-8 right-8 z-30 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black text-slate-200 backdrop-blur">
+      <div className="absolute bottom-20 left-6 right-6 z-30 flex flex-wrap items-center justify-between gap-3 opacity-25 transition-opacity hover:opacity-100 focus-within:opacity-100 xl:left-8 xl:right-8">
+        <div className="flex items-center gap-2 rounded-full border border-cyan-100 bg-white/80 px-4 py-2 text-xs font-black text-slate-700 shadow-lg shadow-cyan-200/20 backdrop-blur">
           <RadioTower size={15} className={connected ? 'text-emerald-300' : 'text-amber-300'} />
           {connected ? 'LIVE SYNC' : 'RECONNECTING'}
         </div>
-        <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-white/10 bg-white/10 p-2 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-cyan-100 bg-white/85 p-2 shadow-lg shadow-cyan-200/20 backdrop-blur-xl">
           <button onClick={enableAudio} className={`rounded-2xl px-4 py-2 text-xs font-black uppercase transition ${audioEnabled ? 'bg-emerald-300 text-slate-950' : 'bg-cyan-300 text-slate-950'}`}>
             {audioEnabled ? 'Suara Aktif' : 'Aktifkan Suara'}
           </button>
           {(['tv', 'grid', 'focus'] as DisplayMode[]).map((item) => (
-            <button key={item} onClick={() => setMode(item)} className={`rounded-2xl px-4 py-2 text-xs font-black uppercase transition ${mode === item ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/10'}`}>
+            <button key={item} onClick={() => setMode(item)} className={`rounded-2xl px-4 py-2 text-xs font-black uppercase transition ${mode === item ? 'bg-cyan-300 text-slate-950' : 'text-slate-600 hover:bg-cyan-50'}`}>
               {item}
             </button>
           ))}
-          <select value={focusId} onChange={(event) => setFocusId(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-950 px-4 py-2 text-xs font-black text-white outline-none">
+          <select value={focusId} onChange={(event) => setFocusId(event.target.value)} className="rounded-2xl border border-cyan-100 bg-white px-4 py-2 text-xs font-black text-slate-950 outline-none">
             {snapshot.containers.map((container) => (
-              <option key={container.id} value={container.id}>{container.name} - {container.service}</option>
+              <option key={container.id} value={container.id}>{container.name} - {formatQueueService(container.service)}</option>
             ))}
           </select>
-          <label className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-xs font-black text-slate-300">
+          <label className="flex items-center gap-2 rounded-2xl bg-cyan-50 px-3 py-2 text-xs font-black text-slate-700">
             <Volume2 size={14} />
             <input type="range" min="0" max="1" step="0.1" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="w-20 accent-cyan-300" />
           </label>
-          <button onClick={() => document.documentElement.requestFullscreen?.()} className="rounded-2xl bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/15">
+          <button onClick={() => document.documentElement.requestFullscreen?.()} className="rounded-2xl bg-cyan-50 px-3 py-2 text-slate-700 hover:bg-cyan-100">
             <Maximize2 size={16} />
           </button>
         </div>

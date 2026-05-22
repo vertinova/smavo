@@ -112,6 +112,14 @@ export async function updateQueueContainers(containers: QueueContainerConfig[]) 
   return data;
 }
 
+export function formatQueueNumber(number?: string | null) {
+  return (number ?? '').replace(/^PPDB-/i, 'SPMB-');
+}
+
+export function formatQueueService(service?: string | null) {
+  return (service ?? '').replace(/^PPDB$/i, 'SPMB');
+}
+
 export function openQueueEventSource(onSnapshot: (snapshot: QueueSnapshot) => void) {
   const source = new EventSource(`${QUEUE_API_URL}/queue/events`);
   source.onmessage = (event) => {
@@ -141,7 +149,7 @@ export function unlockQueueAudio(volume = 0.5) {
 
   const utterance = new SpeechSynthesisUtterance('Suara antrian aktif.');
   utterance.lang = 'id-ID';
-  utterance.rate = 0.95;
+  utterance.rate = 0.72;
   utterance.pitch = 1;
   utterance.volume = Math.max(0, Math.min(1, volume));
   const voice = getPreferredVoice();
@@ -156,9 +164,9 @@ export function speakQueueCall(ticket: QueueTicket, container: QueueContainer, v
   const synth = window.speechSynthesis;
   synth.cancel();
   synth.resume();
-  const utterance = new SpeechSynthesisUtterance(`Nomor antrian ${ticket.number}, silakan menuju ${container.name}, layanan ${container.service}.`);
+  const utterance = new SpeechSynthesisUtterance(`Nomor antrian ${formatQueueNumber(ticket.number)}, silakan menuju ${container.name}, layanan ${formatQueueService(container.service)}.`);
   utterance.lang = 'id-ID';
-  utterance.rate = 0.9;
+  utterance.rate = 0.72;
   utterance.pitch = 1;
   utterance.volume = Math.max(0, Math.min(1, volume));
   const voice = getPreferredVoice();
