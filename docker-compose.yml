@@ -38,6 +38,7 @@ services:
       - '4000:4000'
     volumes:
       - uploads:/app/uploads
+      - queue_data:/app/data
 
   frontend:
     build:
@@ -57,3 +58,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  queue_data:

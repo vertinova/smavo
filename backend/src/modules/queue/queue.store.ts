@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 type QueueStatus = 'WAITING' | 'CALLING' | 'SERVING' | 'DONE' | 'SKIPPED';
 
 export type QueueContainer = {
@@ -75,18 +78,63 @@ type QueueSnapshot = {
   generatedAt: string;
 };
 
+type PersistedQueueState = {
+  containers?: QueueContainer[];
+  tickets?: QueueTicket[];
+  events?: QueueEvent[];
+  counters?: Array<[string, number]>;
+};
+
 const accents = ['cyan', 'violet', 'emerald', 'amber', 'rose'];
+const queueStateFile = process.env.QUEUE_STATE_FILE || path.join(process.cwd(), 'data', 'queue-state.json');
 
 let containers: QueueContainer[] = [
-  { id: 'container-1', name: 'Operator 1', service: 'SPMB', code: 'SPMB', operator: 'Operator 1', isPaused: false, accent: 'cyan' },
-  { id: 'container-2', name: 'Operator 2', service: 'SPMB', code: 'SPMB', operator: 'Operator 2', isPaused: false, accent: 'violet' },
-  { id: 'container-3', name: 'Operator 3', service: 'SPMB', code: 'SPMB', operator: 'Operator 3', isPaused: false, accent: 'emerald' },
-  { id: 'container-4', name: 'Operator 4', service: 'SPMB', code: 'SPMB', operator: 'Operator 4', isPaused: false, accent: 'amber' },
+  { id: 'container-1', name: 'Verifikator 1', service: 'SPMB', code: 'SPMB', operator: 'Verifikator 1', isPaused: false, accent: 'cyan' },
+  { id: 'container-2', name: 'Verifikator 2', service: 'SPMB', code: 'SPMB', operator: 'Verifikator 2', isPaused: false, accent: 'violet' },
+  { id: 'container-3', name: 'Verifikator 3', service: 'SPMB', code: 'SPMB', operator: 'Verifikator 3', isPaused: false, accent: 'emerald' },
+  { id: 'container-4', name: 'Verifikator 4', service: 'SPMB', code: 'SPMB', operator: 'Verifikator 4', isPaused: false, accent: 'amber' },
+  { id: 'container-5', name: 'Verifikator 5', service: 'SPMB', code: 'SPMB', operator: 'Verifikator 5', isPaused: false, accent: 'rose' },
 ];
 
 let tickets: QueueTicket[] = [];
 let events: QueueEvent[] = [];
 const counters = new Map<string, number>();
+
+function loadQueueState() {
+  if (!fs.existsSync(queueStateFile)) return;
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(queueStateFile, 'utf8')) as PersistedQueueState;
+    if (Array.isArray(parsed.containers) && parsed.containers.length) containers = parsed.containers;
+    if (Array.isArray(parsed.tickets)) tickets = parsed.tickets;
+    if (Array.isArray(parsed.events)) events = parsed.events;
+    if (Array.isArray(parsed.counters)) {
+      counters.clear();
+      parsed.counters.forEach(([key, value]) => {
+        if (typeof key === 'string' && Number.isFinite(value)) counters.set(key, value);
+      });
+    }
+  } catch (error) {
+    console.error('Gagal membaca state antrean tersimpan:', error);
+  }
+}
+
+function persistQueueState() {
+  try {
+    fs.mkdirSync(path.dirname(queueStateFile), { recursive: true });
+    const payload: PersistedQueueState = {
+      containers,
+      tickets,
+      events,
+      counters: [...counters.entries()],
+    };
+    fs.writeFileSync(queueStateFile, JSON.stringify(payload, null, 2));
+  } catch (error) {
+    console.error('Gagal menyimpan state antrean:', error);
+  }
+}
+
+loadQueueState();
 
 function sameDay(dateIso: string) {
   const input = new Date(dateIso);
@@ -275,6 +323,7 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
     type: 'RESUMED',
     message: `Konfigurasi operator diperbarui menjadi ${containers.length} operator`,
   });
+  persistQueueState();
 
   return containers;
 }
@@ -305,6 +354,7 @@ export function createQueueTicket(input: QueueTicketInput) {
     containerId: container.id,
     message: `${ticket.number} masuk ke antrean ${ticket.serviceChoice ?? container.service}`,
   });
+  persistQueueState();
 
   return ticket;
 }
@@ -325,6 +375,7 @@ export function callNextTicket(containerId: string) {
     containerId,
     message: `${called?.number} dipanggil ke ${container.name}`,
   });
+  persistQueueState();
   return called;
 }
 
@@ -340,6 +391,7 @@ export function recallTicket(containerId: string) {
     containerId,
     message: `${active.number} dipanggil ulang ke ${container.name}`,
   });
+  persistQueueState();
   return recalled;
 }
 
@@ -354,6 +406,7 @@ export function completeTicket(containerId: string) {
     containerId,
     message: `${completed.number} selesai dilayani di ${container.name}`,
   });
+  persistQueueState();
   return completed;
 }
 
@@ -369,6 +422,7 @@ export function skipTicket(containerId: string) {
     containerId,
     message: `${active.number} dilewati dari ${container.name}`,
   });
+  persistQueueState();
   return skipped;
 }
 
@@ -382,5 +436,6 @@ export function setContainerPaused(containerId: string, paused: boolean) {
     containerId,
     message: `${container.name} ${paused ? 'pause layanan' : 'aktif kembali'}`,
   });
+  persistQueueState();
   return container;
 }
