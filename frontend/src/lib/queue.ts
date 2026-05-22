@@ -157,7 +157,7 @@ export function unlockQueueAudio(volume = 0.5) {
   synth.cancel();
   synth.resume();
 
-  const utterance = new SpeechSynthesisUtterance('Suara antrian aktif.');
+  const utterance = new SpeechSynthesisUtterance('Suara antrean aktif.');
   utterance.lang = 'id-ID';
   utterance.rate = 0.72;
   utterance.pitch = 1;
@@ -174,7 +174,7 @@ export function speakQueueCall(ticket: QueueTicket, container: QueueContainer, v
   const synth = window.speechSynthesis;
   synth.cancel();
   synth.resume();
-  const utterance = new SpeechSynthesisUtterance(`Nomor antrian ${formatQueueNumber(ticket.number)}, silakan menuju ${container.name}, layanan ${formatQueueService(container.service)}.`);
+  const utterance = new SpeechSynthesisUtterance(`Nomor antrean ${formatQueueNumber(ticket.number)}, silakan menuju ${container.name}, layanan ${formatQueueService(container.service)}.`);
   utterance.lang = 'id-ID';
   utterance.rate = 0.72;
   utterance.pitch = 1;

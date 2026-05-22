@@ -7,6 +7,7 @@ import {
   ChevronDown,
   CheckCircle2,
   Clock3,
+  FileSpreadsheet,
   Megaphone,
   MonitorUp,
   Moon,
@@ -41,6 +42,7 @@ import {
   updateQueueContainers,
   type QueueContainer,
   type QueueContainerConfig,
+  type QueueTicket,
 } from '@/lib/queue';
 import { useQueueStore } from '@/lib/queueStore';
 import { useTheme } from '@/lib/theme';
@@ -86,6 +88,70 @@ function makeNewContainer(index: number): QueueContainerConfig {
   };
 }
 
+function formatTicketDateTime(value?: string) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function escapeExcelCell(value: unknown) {
+  const text = String(value ?? '');
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function exportTicketsForExcel(tickets: QueueTicket[]) {
+  const headers = [
+    'Nomor',
+    'Nama Calon Peserta Didik',
+    'Asal Sekolah',
+    'Jalur Pendaftaran',
+    'Pilihan Layanan',
+    'Status',
+    'Container',
+    'Dibuat',
+    'Dipanggil',
+    'Selesai',
+  ];
+  const rows = tickets.map((ticket) => [
+    formatQueueNumber(ticket.number),
+    ticket.visitorName,
+    ticket.originSchool ?? '',
+    ticket.registrationPath ?? '',
+    ticket.serviceChoice ?? formatQueueService(ticket.service),
+    ticket.status,
+    ticket.containerId,
+    formatTicketDateTime(ticket.createdAt),
+    formatTicketDateTime(ticket.calledAt),
+    formatTicketDateTime(ticket.finishedAt ?? ticket.skippedAt),
+  ]);
+  const table = `
+    <html>
+      <head><meta charset="utf-8" /></head>
+      <body>
+        <table border="1">
+          <thead><tr>${headers.map((header) => `<th>${escapeExcelCell(header)}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeExcelCell(cell)}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `;
+  const blob = new Blob([table], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `data-antrean-spmb-${new Date().toISOString().slice(0, 10)}.xls`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 type QueueThemeClasses = {
   panel: string;
   subPanel: string;
@@ -115,6 +181,15 @@ function StatCard({ label, value, icon: Icon, hint, ui }: { label: string; value
       </div>
       <p className={`mt-4 text-xs font-medium ${ui.muted}`}>{hint}</p>
     </motion.div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="min-w-0 rounded-2xl bg-black/20 p-3 ring-1 ring-white/10">
+      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-bold leading-snug text-white">{value || '-'}</p>
+    </div>
   );
 }
 
@@ -169,7 +244,7 @@ function ContainerCard({
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-2xl bg-black/20 p-3">
             <p className="text-lg font-black text-white">{container.waitingCount}</p>
-            <p className="text-[10px] font-bold uppercase text-slate-500">Antri</p>
+            <p className="text-[10px] font-bold uppercase text-slate-500">Antre</p>
           </div>
           <div className="rounded-2xl bg-black/20 p-3">
             <p className="text-lg font-black text-white">{container.doneCount}</p>
@@ -179,6 +254,13 @@ function ContainerCard({
             <p className="text-lg font-black text-white">{container.skippedCount}</p>
             <p className="text-[10px] font-bold uppercase text-slate-500">Lewat</p>
           </div>
+        </div>
+
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          <DetailRow label="Nama" value={active?.visitorName} />
+          <DetailRow label="Asal Sekolah" value={active?.originSchool} />
+          <DetailRow label="Jalur" value={active?.registrationPath} />
+          <DetailRow label="Layanan" value={active?.serviceChoice ?? (active ? formatQueueService(active.service) : '-')} />
         </div>
       </div>
 
@@ -245,7 +327,7 @@ function ContainerSettingsPanel({
           </div>
           <h2 className={`text-xl font-black ${ui.text}`}>Operator Layanan</h2>
           <p className={`mt-1 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Ubah jumlah operator, nama loket, layanan, kode nomor, operator, dan warna tampilan. Kode dipakai sebagai prefix nomor antrian.
+            Ubah jumlah operator, nama loket, layanan, kode nomor, operator, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
           </p>
           <p className={`mt-2 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
             Cara pakai: ubah angka <span className="font-black">Jumlah</span> untuk tambah/kurangi operator, edit kolom nama/layanan, lalu klik <span className="font-black">Simpan Operator</span>.
@@ -386,6 +468,7 @@ export default function QueueDashboardPage() {
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedContainerId, setSelectedContainerId] = useState('');
   const [containerDraft, setContainerDraft] = useState<QueueContainerConfig[]>([]);
 
   useEffect(() => {
@@ -399,9 +482,26 @@ export default function QueueDashboardPage() {
     setContainerDraft(snapshot.containers.map(toContainerConfig));
   }, [settingsDirty, snapshot.containers]);
 
+  useEffect(() => {
+    if (!snapshot.containers.length) return;
+    if (!snapshot.containers.some((container) => container.id === selectedContainerId)) {
+      setSelectedContainerId(snapshot.containers[0].id);
+    }
+  }, [selectedContainerId, snapshot.containers]);
+
   const latestCalled = useMemo(
     () => snapshot.containers.find((container) => container.activeTicket)?.activeTicket ?? null,
     [snapshot.containers]
+  );
+
+  const selectedContainer = useMemo(
+    () => snapshot.containers.find((container) => container.id === selectedContainerId) ?? snapshot.containers[0],
+    [selectedContainerId, snapshot.containers]
+  );
+
+  const otherContainers = useMemo(
+    () => snapshot.containers.filter((container) => container.id !== selectedContainer?.id),
+    [selectedContainer?.id, snapshot.containers]
   );
 
   const runAction = async (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => {
@@ -513,7 +613,7 @@ export default function QueueDashboardPage() {
             <RadioTower size={14} />
             {connected ? 'REALTIME CONNECTED' : 'CONNECTING'}
           </div>
-          <h1 className={`text-3xl font-black tracking-tight lg:text-5xl ${ui.text}`}>Command Center Antrian</h1>
+          <h1 className={`text-3xl font-black tracking-tight lg:text-5xl ${ui.text}`}>Command Center Antrean</h1>
           <p className={`mt-2 max-w-2xl text-sm ${ui.muted}`}>
             Dashboard petugas untuk memanggil, melewati, menyelesaikan, dan memonitor seluruh operator pelayanan SPMB SMAN 2 Cibinong secara realtime.
           </p>
@@ -538,6 +638,13 @@ export default function QueueDashboardPage() {
           <a href="/queue-display" target="_blank" className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-white/10">
             <MonitorUp size={17} /> Buka Display TV
           </a>
+          <button
+            type="button"
+            onClick={() => exportTicketsForExcel(snapshot.tickets)}
+            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.02]"
+          >
+            <FileSpreadsheet size={17} /> Export Excel
+          </button>
           <button
             type="button"
             onClick={enableAudio}
@@ -577,18 +684,96 @@ export default function QueueDashboardPage() {
         <StatCard label="Operator Aktif" value={snapshot.analytics.activeContainers} icon={Activity} hint="Operator yang tidak pause" ui={ui} />
       </div>
 
-      <div className="relative mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
-        <div className="grid gap-4 lg:grid-cols-2">
+      <div className={`relative mt-6 rounded-3xl border p-4 shadow-xl backdrop-blur-xl ${ui.panel}`}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className={`text-lg font-black ${ui.text}`}>Pilih Container</h2>
+            <p className={`mt-1 text-xs ${ui.muted}`}>Pilih satu operator untuk dipakai memanggil antrean. Container lain tetap dipantau di panel terpisah.</p>
+          </div>
+          <select
+            value={selectedContainer?.id ?? ''}
+            onChange={(event) => setSelectedContainerId(event.target.value)}
+            className={`w-full rounded-2xl border px-4 py-3 text-sm font-black outline-none lg:w-72 ${ui.input}`}
+          >
+            {snapshot.containers.map((container) => (
+              <option key={container.id} value={container.id}>{container.name} - {container.operator}</option>
+            ))}
+          </select>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {snapshot.containers.map((container) => (
-            <ContainerCard
+            <button
               key={container.id}
-              container={container}
+              type="button"
+              onClick={() => setSelectedContainerId(container.id)}
+              className={`min-w-0 rounded-2xl border px-4 py-3 text-left transition ${
+                selectedContainer?.id === container.id
+                  ? 'border-cyan-300 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-500/20'
+                  : `${ui.subPanel} ${ui.text} hover:border-cyan-300/50`
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="truncate text-sm font-black">{container.name}</p>
+                <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black ${container.isPaused ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'}`}>
+                  {container.isPaused ? 'PAUSE' : 'LIVE'}
+                </span>
+              </div>
+              <p className="mt-2 truncate text-xs opacity-75">{container.activeTicket ? formatQueueNumber(container.activeTicket.number) : 'Belum memanggil'}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
+        <div className="space-y-4">
+          {selectedContainer ? (
+            <ContainerCard
+              key={selectedContainer.id}
+              container={selectedContainer}
               busy={busy}
               onAction={runAction}
               onPause={runPause}
               onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, volume)}
             />
-          ))}
+          ) : null}
+
+          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
+            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Container Lainnya</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {otherContainers.map((container) => (
+                <button
+                  type="button"
+                  key={container.id}
+                  onClick={() => setSelectedContainerId(container.id)}
+                  className={`min-w-0 rounded-2xl border p-4 text-left transition hover:border-cyan-300/50 ${ui.subPanel}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={`truncate text-sm font-black ${ui.text}`}>{container.name}</p>
+                      <p className={`mt-1 truncate text-xs ${ui.muted}`}>{container.operator} - {formatQueueService(container.service)}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${container.isPaused ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'}`}>
+                      {container.isPaused ? 'PAUSE' : 'LIVE'}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className={`rounded-xl px-2 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
+                      <p className={`text-sm font-black ${ui.text}`}>{container.waitingCount}</p>
+                      <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Antre</p>
+                    </div>
+                    <div className={`rounded-xl px-2 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
+                      <p className={`text-sm font-black ${ui.text}`}>{container.doneCount}</p>
+                      <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Selesai</p>
+                    </div>
+                    <div className={`rounded-xl px-2 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
+                      <p className={`truncate text-sm font-black ${ui.text}`}>{container.activeTicket ? formatQueueNumber(container.activeTicket.number) : '-'}</p>
+                      <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Aktif</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4">

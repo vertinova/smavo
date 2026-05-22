@@ -21,7 +21,7 @@ const NAV = [
   { name: 'Data Guru', href: '/dashboard/teachers', icon: Users, feature: 'teachers' },
   { name: 'Persuratan', href: '/dashboard/letters', icon: FileText, feature: 'letters' },
   { name: 'Kedisiplinan', href: '/dashboard/discipline', icon: ShieldAlert, feature: 'discipline' },
-  { name: 'Antrian', href: '/dashboard/queue', icon: RadioTower },
+  { name: 'Antrean', href: '/dashboard/queue', icon: RadioTower },
   { name: 'Akun & Role', href: '/dashboard/users', icon: UserCog, adminOnly: true },
 ];
 
@@ -42,7 +42,7 @@ const TITLES: Record<string, string> = {
   '/dashboard/teachers': 'Data Guru',
   '/dashboard/letters': 'Persuratan',
   '/dashboard/discipline': 'Kedisiplinan',
-  '/dashboard/queue': 'Nomor Antrian',
+  '/dashboard/queue': 'Nomor Antrean',
   '/dashboard/users': 'Akun & Role',
 };
 

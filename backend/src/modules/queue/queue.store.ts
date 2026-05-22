@@ -303,7 +303,7 @@ export function createQueueTicket(input: QueueTicketInput) {
     type: 'CREATED',
     ticketNumber: ticket.number,
     containerId: container.id,
-    message: `${ticket.number} masuk ke antrian ${ticket.serviceChoice ?? container.service}`,
+    message: `${ticket.number} masuk ke antrean ${ticket.serviceChoice ?? container.service}`,
   });
 
   return ticket;

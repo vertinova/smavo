@@ -166,7 +166,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <a href="#tentang" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Tentang</a>
             <a href="#fitur" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Fitur</a>
-            <a href="#antrian" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Antrian</a>
+            <a href="#antrean" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Antrean</a>
             <Link
               href={hasSession ? '/dashboard' : '/login'}
               className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-full border border-indigo-100 bg-white/80 text-indigo-600 shadow-sm hover:bg-indigo-50 hover:scale-[1.03] transition-all duration-300"
@@ -175,12 +175,12 @@ export default function HomePage() {
               <span>{hasSession ? 'Dashboard' : 'Masuk'}</span>
             </Link>
             <a
-              href="#antrian"
+              href="#antrean"
               className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:scale-[1.03] transition-all duration-300"
             >
               <Ticket size={14} />
-              <span className="hidden sm:inline">Ambil Antrian</span>
-              <span className="sm:hidden">Antrian</span>
+              <span className="hidden sm:inline">Ambil Antrean</span>
+              <span className="sm:hidden">Antrean</span>
             </a>
           </div>
         </div>
@@ -212,12 +212,12 @@ export default function HomePage() {
           <div className="animate-fade-up-delay-2 flex flex-col items-center gap-3">
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <a
-                href="#antrian"
+                href="#antrean"
                 className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-10 py-4 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
                 <Ticket size={18} className="relative z-10" />
-                <span className="relative z-10">Ambil Antrian</span>
+                <span className="relative z-10">Ambil Antrean</span>
               </a>
 
               <Link
@@ -479,7 +479,7 @@ export default function HomePage() {
               <div className="space-y-2">
                 <a href="#tentang" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Tentang SMAVO</a>
                 <a href="#fitur" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Fitur Super App</a>
-                <a href="#antrian" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Nomor Antrian</a>
+                <a href="#antrean" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Nomor Antrean</a>
                 <Link href="/login" className="block text-xs text-slate-400 hover:text-indigo-600 transition-colors">Masuk Dashboard</Link>
               </div>
             </div>

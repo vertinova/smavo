@@ -185,7 +185,7 @@ function PremiumImageTicket({ ticket }: { ticket: QueueTicketImage }) {
             <img src="/logo-smavo.jpeg" alt="Logo SMAN 2 Cibinong" className="h-14 w-14 shrink-0 rounded-2xl border border-white/30 object-cover shadow-lg" />
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">SMAN 2 Cibinong</p>
-              <h3 className="text-2xl font-extrabold leading-tight">Nomor Antrian</h3>
+              <h3 className="text-2xl font-extrabold leading-tight">Nomor Antrean</h3>
             </div>
           </div>
           <div className="shrink-0 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur">
@@ -252,7 +252,7 @@ function QueueTicketResultModal({
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
-        aria-label="Tutup pop up nomor antrian"
+        aria-label="Tutup pop up nomor antrean"
         onClick={onClose}
       />
 
@@ -275,12 +275,12 @@ function QueueTicketResultModal({
             <img src="/logo-smavo.jpeg" alt="SMAVO" className="h-12 w-12 shrink-0 rounded-2xl border border-white/40 object-cover shadow-lg" />
             <div className="min-w-0">
               <p className="truncate text-[11px] font-bold uppercase tracking-[0.2em] text-white/75">SPMB SMAVO</p>
-              <h3 className="text-base font-black leading-tight sm:text-lg">Nomor Antrian Berhasil Dibuat</h3>
+              <h3 className="text-base font-black leading-tight sm:text-lg">Nomor Antrean Berhasil Dibuat</h3>
             </div>
           </div>
 
           <div className="mt-7 rounded-[24px] border border-slate-100 bg-white p-5 text-center shadow-xl shadow-slate-900/10">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Nomor Antrian</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Nomor Antrean</p>
             <p className="mt-2 break-words text-[4.4rem] font-black leading-none tracking-normal text-slate-950 sm:text-[5rem]">
               {queueNumber}
             </p>
@@ -395,7 +395,7 @@ export default function QueueTicketStudio() {
           return;
         }
 
-        downloadBlob(blob, `tiket-antrian-${ticket.number}.png`);
+        downloadBlob(blob, `tiket-antrean-${ticket.number}.png`);
         saveDownloadedNumber(ticket.number);
         setLastIssued(ticket);
         setDownloadStatus('downloaded');
@@ -443,7 +443,7 @@ export default function QueueTicketStudio() {
       }
     }
 
-    throw new Error('Tidak dapat membuat nomor antrian unik.');
+    throw new Error('Tidak dapat membuat nomor antrean unik.');
   };
 
   const handleTakeQueue = async () => {
@@ -463,7 +463,7 @@ export default function QueueTicketStudio() {
     if (isBusy) return;
 
     setIsBusy(true);
-    setMessage('Membuat nomor antrian dan menyiapkan tiket...');
+    setMessage('Membuat nomor antrean dan menyiapkan tiket...');
     setLastIssued(null);
     setModalTicket(null);
     setDownloadStatus('pending');
@@ -481,7 +481,7 @@ export default function QueueTicketStudio() {
     } catch {
       setIsBusy(false);
       setPendingDownload(false);
-      setMessage('Nomor antrian belum bisa dibuat. Coba lagi sebentar.');
+      setMessage('Nomor antrean belum bisa dibuat. Coba lagi sebentar.');
     }
   };
 
@@ -491,15 +491,15 @@ export default function QueueTicketStudio() {
   };
 
   return (
-    <section id="antrian" className="relative z-10 py-10 sm:py-20">
+    <section id="antrean" className="relative z-10 py-10 sm:py-20">
       <div className="mx-auto max-w-md px-4 sm:max-w-lg">
         <div className="mb-6 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50 px-4 py-1.5">
             <Ticket size={13} className="text-cyan-600" />
-            <span className="text-xs font-semibold text-cyan-700">Antrian SPMB Digital</span>
+            <span className="text-xs font-semibold text-cyan-700">Antrean SPMB Digital</span>
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-            Ambil nomor antrian SPMB dari ponsel.
+            Ambil nomor antrean SPMB dari ponsel.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
             Isi nama calon peserta, nomor akan tampil di layar dan tiket PNG otomatis terunduh ke perangkat.
@@ -512,7 +512,7 @@ export default function QueueTicketStudio() {
               <Sparkles size={21} />
             </div>
             <div className="min-w-0">
-              <h3 className="font-extrabold text-slate-900">Nomor Antrian SPMB</h3>
+              <h3 className="font-extrabold text-slate-900">Nomor Antrean SPMB</h3>
               <p className="text-xs leading-relaxed text-slate-500">Nomor tampil sebagai pop up, tiket langsung download.</p>
             </div>
           </div>
@@ -583,7 +583,7 @@ export default function QueueTicketStudio() {
               className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-5 py-4 text-base font-black text-white shadow-xl shadow-indigo-500/25 transition hover:scale-[1.01] active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
             >
               {isBusy ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
-              {isBusy ? 'Menyiapkan Tiket...' : 'Ambil No Antrian'}
+              {isBusy ? 'Menyiapkan Tiket...' : 'Ambil No Antrean'}
             </button>
           </div>
 
