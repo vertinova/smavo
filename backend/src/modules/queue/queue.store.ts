@@ -98,6 +98,10 @@ function normalizeCode(value: string, fallback: string) {
   return cleaned || fallback;
 }
 
+function normalizeService(value: string) {
+  return value.trim().toUpperCase();
+}
+
 function addEvent(event: Omit<QueueEvent, 'id' | 'createdAt'>) {
   const nextEvent = { ...event, id: makeId('event'), createdAt: nowIso() };
   events = [nextEvent, ...events].slice(0, 80);
@@ -108,10 +112,25 @@ function todayTickets() {
   return tickets.filter((ticket) => sameDay(ticket.createdAt));
 }
 
+function getTicketSequence(ticket: QueueTicket) {
+  const suffix = Number(ticket.number.split('-').pop());
+  return Number.isFinite(suffix) ? suffix : Number.MAX_SAFE_INTEGER;
+}
+
+function compareQueueOrder(a: QueueTicket, b: QueueTicket) {
+  const createdDiff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  if (createdDiff !== 0) return createdDiff;
+  return getTicketSequence(a) - getTicketSequence(b);
+}
+
 function waitingFor(containerId: string) {
+  const container = containers.find((item) => item.id === containerId);
+  if (!container) return [];
+  const serviceKey = normalizeService(container.service);
+
   return todayTickets()
-    .filter((ticket) => ticket.containerId === containerId && ticket.status === 'WAITING')
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    .filter((ticket) => ticket.status === 'WAITING' && normalizeService(ticket.service) === serviceKey)
+    .sort(compareQueueOrder);
 }
 
 function activeFor(containerId: string) {
@@ -129,6 +148,31 @@ function finishActiveTicket(containerId: string) {
   const active = activeFor(containerId);
   if (!active) return null;
   return updateTicket(active.id, { status: 'DONE', finishedAt: nowIso() });
+}
+
+function getHighestIssuedNumber(code: string) {
+  const prefix = `${code}-`;
+  return todayTickets()
+    .filter((ticket) => ticket.number.startsWith(prefix))
+    .reduce((highest, ticket) => {
+      const suffix = Number(ticket.number.slice(prefix.length));
+      return Number.isFinite(suffix) ? Math.max(highest, suffix) : highest;
+    }, 0);
+}
+
+function makeNextQueueNumber(code: string) {
+  const counterKey = `${code}-${new Date().toISOString().slice(0, 10)}`;
+  const usedNumbers = new Set(todayTickets().map((ticket) => ticket.number));
+  let nextNumber = Math.max(counters.get(counterKey) ?? 0, getHighestIssuedNumber(code));
+  let formatted = '';
+
+  do {
+    nextNumber += 1;
+    formatted = `${code}-${String(nextNumber).padStart(3, '0')}`;
+  } while (usedNumbers.has(formatted));
+
+  counters.set(counterKey, nextNumber);
+  return formatted;
 }
 
 function getAverageWaitMinutes(doneTickets: QueueTicket[]) {
@@ -226,13 +270,11 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
 
 export function createQueueTicket(visitorName: string, containerId = 'container-1') {
   const container = containers.find((item) => item.id === containerId) ?? containers[0];
-  const counterKey = `${container.code}-${new Date().toISOString().slice(0, 10)}`;
-  const nextNumber = (counters.get(counterKey) ?? tickets.filter((ticket) => sameDay(ticket.createdAt) && ticket.service === container.service).length) + 1;
-  counters.set(counterKey, nextNumber);
+  const number = makeNextQueueNumber(container.code);
 
   const ticket: QueueTicket = {
     id: makeId('ticket'),
-    number: `${container.code}-${String(nextNumber).padStart(3, '0')}`,
+    number,
     visitorName,
     service: container.service,
     containerId: container.id,
@@ -261,7 +303,7 @@ export function callNextTicket(containerId: string) {
   const next = waitingFor(containerId)[0];
   if (!next) return null;
 
-  const called = updateTicket(next.id, { status: 'CALLING', calledAt: nowIso() });
+  const called = updateTicket(next.id, { containerId, status: 'CALLING', calledAt: nowIso() });
   addEvent({
     type: 'CALLED',
     ticketNumber: called?.number,

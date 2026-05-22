@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
+  ChevronDown,
   CheckCircle2,
   Clock3,
   Megaphone,
@@ -215,24 +216,28 @@ function ContainerSettingsPanel({
   draft,
   busy,
   message,
+  open,
   onChange,
   onCountChange,
   onRemove,
   onSave,
+  onToggle,
   ui,
 }: {
   draft: QueueContainerConfig[];
   busy: boolean;
   message: string;
+  open: boolean;
   onChange: (index: number, patch: Partial<QueueContainerConfig>) => void;
   onCountChange: (count: number) => void;
   onRemove: (index: number) => void;
   onSave: () => void;
+  onToggle: () => void;
   ui: QueueThemeClasses;
 }) {
   return (
     <div className={`relative mt-6 rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-black text-cyan-200">
             <Settings size={13} />
@@ -248,6 +253,25 @@ function ContainerSettingsPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <div className={`rounded-2xl border px-4 py-3 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
+            <span className={ui.faint}>Jumlah</span>
+            <span className={`ml-3 text-sm font-black ${ui.text}`}>{draft.length}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02]"
+            aria-expanded={open}
+          >
+            {open ? 'Tutup Pengaturan' : 'Buka Pengaturan'}
+            <ChevronDown size={17} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {open ? (
+        <>
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
           <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
             Jumlah
             <input
@@ -269,77 +293,78 @@ function ContainerSettingsPanel({
             {busy ? 'Menyimpan...' : 'Simpan Operator'}
           </button>
         </div>
-      </div>
 
-      <div className="mt-5 grid gap-3">
-        {draft.map((container, index) => (
-          <div key={`${container.id}-${index}`} className={`grid gap-3 rounded-3xl border p-4 lg:grid-cols-[1.1fr_1.1fr_0.7fr_1fr_0.75fr_auto] ${ui.subPanel}`}>
-            <label className="min-w-0">
-              <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Nama Operator</span>
-              <input
-                value={container.name}
-                onChange={(event) => onChange(index, { name: event.target.value })}
-                className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                placeholder="Operator 1"
-              />
-            </label>
+        <div className="mt-5 grid gap-3">
+          {draft.map((container, index) => (
+            <div key={`${container.id}-${index}`} className={`grid gap-3 rounded-3xl border p-4 lg:grid-cols-[1.1fr_1.1fr_0.7fr_1fr_0.75fr_auto] ${ui.subPanel}`}>
+              <label className="min-w-0">
+                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Nama Operator</span>
+                <input
+                  value={container.name}
+                  onChange={(event) => onChange(index, { name: event.target.value })}
+                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
+                  placeholder="Operator 1"
+                />
+              </label>
 
-            <label className="min-w-0">
-              <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Layanan</span>
-              <input
-                value={container.service}
-                onChange={(event) => onChange(index, { service: event.target.value })}
-                className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                placeholder="SPMB"
-              />
-            </label>
+              <label className="min-w-0">
+                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Layanan</span>
+                <input
+                  value={container.service}
+                  onChange={(event) => onChange(index, { service: event.target.value })}
+                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
+                  placeholder="SPMB"
+                />
+              </label>
 
-            <label className="min-w-0">
-              <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Kode</span>
-              <input
-                value={container.code}
-                maxLength={8}
-                onChange={(event) => onChange(index, { code: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })}
-                className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black uppercase outline-none focus:border-cyan-300/60 ${ui.input}`}
-                placeholder="SPMB"
-              />
-            </label>
+              <label className="min-w-0">
+                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Kode</span>
+                <input
+                  value={container.code}
+                  maxLength={8}
+                  onChange={(event) => onChange(index, { code: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })}
+                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black uppercase outline-none focus:border-cyan-300/60 ${ui.input}`}
+                  placeholder="SPMB"
+                />
+              </label>
 
-            <label className="min-w-0">
-              <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Operator</span>
-              <input
-                value={container.operator}
-                onChange={(event) => onChange(index, { operator: event.target.value })}
-                className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                placeholder="Petugas SPMB"
-              />
-            </label>
+              <label className="min-w-0">
+                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Operator</span>
+                <input
+                  value={container.operator}
+                  onChange={(event) => onChange(index, { operator: event.target.value })}
+                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
+                  placeholder="Petugas SPMB"
+                />
+              </label>
 
-            <label className="min-w-0">
-              <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Warna</span>
-              <select
-                value={container.accent}
-                onChange={(event) => onChange(index, { accent: event.target.value })}
-                className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black outline-none focus:border-cyan-300/60 ${ui.input}`}
+              <label className="min-w-0">
+                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Warna</span>
+                <select
+                  value={container.accent}
+                  onChange={(event) => onChange(index, { accent: event.target.value })}
+                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black outline-none focus:border-cyan-300/60 ${ui.input}`}
+                >
+                  {accentOptions.map((accent) => (
+                    <option key={accent.value} value={accent.value}>{accent.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                disabled={draft.length <= 1}
+                onClick={() => onRemove(index)}
+                className="flex h-[42px] w-full items-center justify-center self-end rounded-2xl bg-rose-400/15 text-rose-200 ring-1 ring-rose-300/20 transition hover:bg-rose-400/25 disabled:cursor-not-allowed disabled:opacity-40 lg:w-12"
+                aria-label={`Hapus ${container.name}`}
               >
-                {accentOptions.map((accent) => (
-                  <option key={accent.value} value={accent.value}>{accent.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              disabled={draft.length <= 1}
-              onClick={() => onRemove(index)}
-              className="flex h-[42px] w-full items-center justify-center self-end rounded-2xl bg-rose-400/15 text-rose-200 ring-1 ring-rose-300/20 transition hover:bg-rose-400/25 disabled:cursor-not-allowed disabled:opacity-40 lg:w-12"
-              aria-label={`Hapus ${container.name}`}
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        ))}
-      </div>
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+        </>
+      ) : null}
 
       {message ? (
         <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm font-bold ${ui.subPanel} ${ui.text}`}>
@@ -360,6 +385,7 @@ export default function QueueDashboardPage() {
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsDirty, setSettingsDirty] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [containerDraft, setContainerDraft] = useState<QueueContainerConfig[]>([]);
 
   useEffect(() => {
@@ -534,10 +560,12 @@ export default function QueueDashboardPage() {
         draft={containerDraft}
         busy={settingsBusy}
         message={settingsMessage}
+        open={settingsOpen}
         onChange={changeContainerDraft}
         onCountChange={changeContainerCount}
         onRemove={removeContainerDraft}
         onSave={saveContainers}
+        onToggle={() => setSettingsOpen((current) => !current)}
         ui={ui}
       />
 
