@@ -622,7 +622,7 @@ export default function QueueDashboardPage() {
                 <div key={ticket.id} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${ui.subPanel}`}>
                   <div>
                     <p className={`font-black ${ui.text}`}>{formatQueueNumber(ticket.number)}</p>
-                    <p className={`text-xs ${ui.muted}`}>{ticket.visitorName} - {formatQueueService(ticket.service)}</p>
+                    <p className={`text-xs ${ui.muted}`}>{ticket.visitorName} - {ticket.serviceChoice ?? formatQueueService(ticket.service)}</p>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-[10px] font-black ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-white/10 text-slate-300'}`}>{ticket.status}</span>
                 </div>

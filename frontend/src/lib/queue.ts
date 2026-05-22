@@ -6,6 +6,9 @@ export type QueueTicket = {
   id: string;
   number: string;
   visitorName: string;
+  originSchool?: string;
+  registrationPath?: string;
+  serviceChoice?: string;
   service: string;
   containerId: string;
   status: QueueStatus;
@@ -14,6 +17,14 @@ export type QueueTicket = {
   finishedAt?: string;
   skippedAt?: string;
   estimatedWaitMinutes: number;
+};
+
+export type CreateQueueTicketInput = {
+  visitorName: string;
+  containerId?: string;
+  originSchool?: string;
+  registrationPath?: string;
+  serviceChoice?: string;
 };
 
 export type QueueContainer = {
@@ -87,10 +98,9 @@ export async function fetchQueueState() {
   return data.data;
 }
 
-export async function createQueueTicket(visitorName: string, containerId = 'container-1') {
+export async function createQueueTicket(input: CreateQueueTicketInput) {
   const { data } = await api.post<{ success: boolean; data: QueueTicket; snapshot: QueueSnapshot }>('/queue/tickets', {
-    visitorName,
-    containerId,
+    ...input,
   });
   return data;
 }

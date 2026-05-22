@@ -20,6 +20,9 @@ export type QueueTicket = {
   id: string;
   number: string;
   visitorName: string;
+  originSchool?: string;
+  registrationPath?: string;
+  serviceChoice?: string;
   service: string;
   containerId: string;
   status: QueueStatus;
@@ -28,6 +31,14 @@ export type QueueTicket = {
   finishedAt?: string;
   skippedAt?: string;
   estimatedWaitMinutes: number;
+};
+
+export type QueueTicketInput = {
+  visitorName: string;
+  containerId?: string;
+  originSchool?: string;
+  registrationPath?: string;
+  serviceChoice?: string;
 };
 
 export type QueueEvent = {
@@ -268,14 +279,18 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
   return containers;
 }
 
-export function createQueueTicket(visitorName: string, containerId = 'container-1') {
+export function createQueueTicket(input: QueueTicketInput) {
+  const containerId = input.containerId ?? 'container-1';
   const container = containers.find((item) => item.id === containerId) ?? containers[0];
   const number = makeNextQueueNumber(container.code);
 
   const ticket: QueueTicket = {
     id: makeId('ticket'),
     number,
-    visitorName,
+    visitorName: input.visitorName.trim(),
+    originSchool: input.originSchool?.trim() || undefined,
+    registrationPath: input.registrationPath?.trim() || undefined,
+    serviceChoice: input.serviceChoice?.trim() || undefined,
     service: container.service,
     containerId: container.id,
     status: 'WAITING',
@@ -288,7 +303,7 @@ export function createQueueTicket(visitorName: string, containerId = 'container-
     type: 'CREATED',
     ticketNumber: ticket.number,
     containerId: container.id,
-    message: `${ticket.number} masuk ke antrian ${container.service}`,
+    message: `${ticket.number} masuk ke antrian ${ticket.serviceChoice ?? container.service}`,
   });
 
   return ticket;

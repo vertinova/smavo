@@ -10,10 +10,12 @@ import { useQueueStore } from '@/lib/queueStore';
 type DisplayMode = 'grid' | 'focus' | 'tv';
 
 const tickerText = [
-  'Selamat datang di layanan SPMB SMAN 2 Cibinong.',
-  'Siapkan berkas pendaftaran sebelum nomor antrian dipanggil.',
-  'Perhatikan layar informasi dan suara panggilan petugas.',
-  'SMAVO Super App mendukung pelayanan sekolah yang cepat, transparan, dan modern.',
+  'Selamat Datang di Layanan SPMB Sekolah MAUNG SMAN 2 Cibinong Tahun 2026',
+  'Berakhlak Mulia, Tangguh, dan Unggul',
+  'SMAVO: Smart, Milenial, Awasome, Visioner, Outstanding',
+  'Beyond Expectations',
+  'Siapkan Berkas Yang Diperlukan',
+  'Perhatikan Nomor Antre Anda',
 ].join('     -     ');
 
 function useClock() {

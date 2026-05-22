@@ -19,6 +19,9 @@ type QueueTicketImage = {
   id: string;
   number: string;
   visitor: string;
+  originSchool: string;
+  registrationPath: string;
+  serviceChoice: string;
   service: string;
   status: string;
   estimate: string;
@@ -28,12 +31,32 @@ type QueueTicketImage = {
 
 type DownloadStatus = 'pending' | 'downloaded' | 'failed';
 
+type QueueTicketForm = {
+  visitorName: string;
+  originSchool: string;
+  registrationPath: string;
+  serviceChoice: string;
+};
+
 const SPMB_SERVICE = {
   name: 'SPMB SMAN 2 Cibinong',
   prefix: 'SPMB',
   accent: 'from-indigo-600 to-cyan-600',
   wait: 6,
 };
+
+const registrationPathOptions = [
+  'Potensi Akademik',
+  'Prestasi Rapor',
+  'Kejuaraan Akademik',
+  'Kejuaraan Non Akademik',
+  'Kepemimpinan',
+];
+
+const serviceChoiceOptions = [
+  'Informasi SPMB',
+  'Verifikasi Berkas',
+];
 
 const DOWNLOADED_NUMBERS_KEY = 'smavo_downloaded_queue_numbers';
 
@@ -60,7 +83,11 @@ function saveDownloadedNumber(number: string) {
   localStorage.setItem(DOWNLOADED_NUMBERS_KEY, JSON.stringify([...numbers].slice(-300)));
 }
 
-function makeLocalTicket(visitor: string): QueueTicketImage {
+function formatQueueLabel(value?: string | null) {
+  return (value ?? 'SPMB').replace(/^PPDB$/i, 'SPMB');
+}
+
+function makeLocalTicket(form: QueueTicketForm): QueueTicketImage {
   const storageKey = `smavo_queue_${SPMB_SERVICE.prefix}`;
   const current = Number(localStorage.getItem(storageKey) ?? '0') + 1;
   localStorage.setItem(storageKey, String(current));
@@ -72,7 +99,10 @@ function makeLocalTicket(visitor: string): QueueTicketImage {
   return {
     id,
     number,
-    visitor,
+    visitor: form.visitorName,
+    originSchool: form.originSchool,
+    registrationPath: form.registrationPath,
+    serviceChoice: form.serviceChoice,
     service: SPMB_SERVICE.name,
     status: 'Menunggu',
     estimate: `${Math.max(SPMB_SERVICE.wait, current * SPMB_SERVICE.wait)} menit`,
@@ -82,7 +112,10 @@ function makeLocalTicket(visitor: string): QueueTicketImage {
       school: 'SMAN 2 Cibinong',
       id,
       number,
-      visitor,
+      visitor: form.visitorName,
+      originSchool: form.originSchool,
+      registrationPath: form.registrationPath,
+      serviceChoice: form.serviceChoice,
       service: SPMB_SERVICE.name,
       createdAt: now.toISOString(),
     }),
@@ -94,6 +127,9 @@ function mapRemoteTicket(ticket: RemoteQueueTicket): QueueTicketImage {
     id: ticket.id,
     number: ticket.number,
     visitor: ticket.visitorName,
+    originSchool: ticket.originSchool ?? '-',
+    registrationPath: ticket.registrationPath ?? '-',
+    serviceChoice: ticket.serviceChoice ?? formatQueueLabel(ticket.service),
     service: `${ticket.service} SMAN 2 Cibinong`,
     status: ticket.status === 'WAITING' ? 'Menunggu' : ticket.status,
     estimate: `${ticket.estimatedWaitMinutes} menit`,
@@ -104,6 +140,9 @@ function mapRemoteTicket(ticket: RemoteQueueTicket): QueueTicketImage {
       id: ticket.id,
       number: ticket.number,
       visitor: ticket.visitorName,
+      originSchool: ticket.originSchool,
+      registrationPath: ticket.registrationPath,
+      serviceChoice: ticket.serviceChoice,
       service: ticket.service,
       createdAt: ticket.createdAt,
     }),
@@ -168,12 +207,20 @@ function PremiumImageTicket({ ticket }: { ticket: QueueTicketImage }) {
             <p className="mt-2 break-words text-base font-bold leading-snug">{ticket.visitor}</p>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Estimasi</p>
-            <p className="mt-2 text-base font-bold leading-snug">{ticket.estimate}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Asal Sekolah</p>
+            <p className="mt-2 break-words text-base font-bold leading-snug">{ticket.originSchool}</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Jalur</p>
+            <p className="mt-2 break-words text-base font-bold leading-snug">{ticket.registrationPath}</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Layanan</p>
+            <p className="mt-2 break-words text-base font-bold leading-snug">{ticket.serviceChoice}</p>
           </div>
           <div className="col-span-2 rounded-2xl border border-white/15 bg-white/12 p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Waktu Pengambilan</p>
-            <p className="mt-2 break-words text-base font-semibold leading-snug">{formatTime(ticket.createdAt)}</p>
+            <p className="mt-2 break-words text-base font-semibold leading-snug">{formatTime(ticket.createdAt)} - estimasi {ticket.estimate}</p>
           </div>
         </div>
 
@@ -245,6 +292,18 @@ function QueueTicketResultModal({
                 <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.visitor}</p>
               </div>
               <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Asal Sekolah</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.originSchool}</p>
+              </div>
+              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Jalur</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.registrationPath}</p>
+              </div>
+              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Layanan</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.serviceChoice}</p>
+              </div>
+              <div className="min-w-0 rounded-2xl bg-slate-50 p-4 sm:col-span-2">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Estimasi</p>
                 <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.estimate}</p>
               </div>
@@ -299,6 +358,9 @@ function QueueTicketResultModal({
 
 export default function QueueTicketStudio() {
   const [visitor, setVisitor] = useState('');
+  const [originSchool, setOriginSchool] = useState('');
+  const [registrationPath, setRegistrationPath] = useState(registrationPathOptions[0]);
+  const [serviceChoice, setServiceChoice] = useState(serviceChoiceOptions[0]);
   const [ticket, setTicket] = useState<QueueTicketImage | null>(null);
   const [modalTicket, setModalTicket] = useState<QueueTicketImage | null>(null);
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('pending');
@@ -308,6 +370,7 @@ export default function QueueTicketStudio() {
   const [pendingDownload, setPendingDownload] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const originSchoolRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!pendingDownload || !ticket) return;
@@ -358,15 +421,21 @@ export default function QueueTicketStudio() {
     };
   }, [pendingDownload, ticket]);
 
-  const generateUniqueTicket = async (name: string) => {
+  const generateUniqueTicket = async (form: QueueTicketForm) => {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       let nextTicket: QueueTicketImage;
 
       try {
-        const result = await createRemoteQueueTicket(name, 'container-1');
+        const result = await createRemoteQueueTicket({
+          visitorName: form.visitorName,
+          originSchool: form.originSchool,
+          registrationPath: form.registrationPath,
+          serviceChoice: form.serviceChoice,
+          containerId: 'container-1',
+        });
         nextTicket = mapRemoteTicket(result.data);
       } catch {
-        nextTicket = makeLocalTicket(name);
+        nextTicket = makeLocalTicket(form);
       }
 
       if (!getDownloadedNumbers().has(nextTicket.number)) {
@@ -379,9 +448,15 @@ export default function QueueTicketStudio() {
 
   const handleTakeQueue = async () => {
     const cleanName = visitor.trim();
+    const cleanOriginSchool = originSchool.trim();
     if (!cleanName) {
-      setMessage('Isi nama calon peserta terlebih dahulu.');
+      setMessage('Isi nama calon peserta didik terlebih dahulu.');
       nameRef.current?.focus();
+      return;
+    }
+    if (!cleanOriginSchool) {
+      setMessage('Isi asal sekolah terlebih dahulu.');
+      originSchoolRef.current?.focus();
       return;
     }
 
@@ -394,7 +469,12 @@ export default function QueueTicketStudio() {
     setDownloadStatus('pending');
 
     try {
-      const nextTicket = await generateUniqueTicket(cleanName);
+      const nextTicket = await generateUniqueTicket({
+        visitorName: cleanName,
+        originSchool: cleanOriginSchool,
+        registrationPath,
+        serviceChoice,
+      });
       setModalTicket(nextTicket);
       setTicket(nextTicket);
       setPendingDownload(true);
@@ -440,7 +520,7 @@ export default function QueueTicketStudio() {
           <div className="mt-5 space-y-4">
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                <UserRound size={13} /> Nama Calon Peserta
+                <UserRound size={13} /> Nama Calon Peserta Didik
               </span>
               <input
                 ref={nameRef}
@@ -452,12 +532,49 @@ export default function QueueTicketStudio() {
               />
             </label>
 
-            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-              <span className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-500">
-                <BadgeCheck size={13} /> Layanan
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <BadgeCheck size={13} /> Asal Sekolah
               </span>
-              <p className="text-sm font-black text-indigo-900">SPMB SMAN 2 Cibinong</p>
-            </div>
+              <input
+                ref={originSchoolRef}
+                value={originSchool}
+                onChange={(event) => setOriginSchool(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                placeholder="Contoh: SMP Negeri 1 Cibinong"
+                autoComplete="organization"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <BadgeCheck size={13} /> Jalur Pendaftaran
+              </span>
+              <select
+                value={registrationPath}
+                onChange={(event) => setRegistrationPath(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+              >
+                {registrationPathOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <BadgeCheck size={13} /> Pilihan Layanan
+              </span>
+              <select
+                value={serviceChoice}
+                onChange={(event) => setServiceChoice(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+              >
+                {serviceChoiceOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
 
             <button
               type="button"

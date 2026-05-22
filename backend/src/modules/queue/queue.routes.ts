@@ -18,6 +18,9 @@ const clients = new Set<Response>();
 
 const createTicketSchema = z.object({
   visitorName: z.string().min(2).max(120),
+  originSchool: z.string().min(2).max(120).optional(),
+  registrationPath: z.string().min(2).max(80).optional(),
+  serviceChoice: z.string().min(2).max(80).optional(),
   containerId: z.string().optional(),
 });
 
@@ -77,7 +80,7 @@ router.get('/events', (req, res) => {
 router.post('/tickets', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const payload = createTicketSchema.parse(req.body);
-    const ticket = createQueueTicket(payload.visitorName, payload.containerId);
+    const ticket = createQueueTicket(payload);
     broadcastQueueState();
     res.status(201).json({ success: true, data: ticket, snapshot: getQueueSnapshot() });
   } catch (err) {
