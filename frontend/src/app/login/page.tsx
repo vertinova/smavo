@@ -6,7 +6,6 @@ import Image from 'next/image';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
-import { isStandaloneMode } from '@/lib/pwa';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,10 +14,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // PWA gate: only allow login in standalone/installed mode
   useEffect(() => {
-    if (!isStandaloneMode()) {
-      router.replace('/');
+    if (localStorage.getItem('smavo_token')) {
+      router.replace('/dashboard');
     }
   }, [router]);
 

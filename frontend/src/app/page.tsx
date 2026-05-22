@@ -3,14 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { isStandaloneMode } from '@/lib/pwa';
 import QueueTicketStudio from '@/components/QueueTicketStudio';
 import {
   ArrowRight, Package, Wallet, GraduationCap, Users, FileText,
   ShieldAlert, BarChart3, CheckCircle2, Zap, Lock, ChevronDown,
-  Sparkles, MousePointer2, Globe, Award, BookOpen, Building2,
+  Sparkles, MousePointer2, Award, Building2,
   MapPin, Phone, Mail, Star, Heart, Rocket, Ticket,
 } from 'lucide-react';
 
@@ -112,7 +110,6 @@ function useReveal() {
 }
 
 export default function HomePage() {
-  const router = useRouter();
   const aboutRef = useReveal();
   const factsRef = useReveal();
   const featuresRef = useReveal();
@@ -121,19 +118,18 @@ export default function HomePage() {
 
   // Lottie animation data
   const [lottieData, setLottieData] = useState<any>(null);
+  const [hasSession, setHasSession] = useState(false);
+
   useEffect(() => {
     fetch('/lottie-chatbot.json').then(r => r.json()).then(setLottieData).catch(() => {});
   }, []);
 
 
   useEffect(() => {
-    // If already running as PWA → check session
-    if (isStandaloneMode()) {
-      const token = localStorage.getItem('smavo_token');
-      router.replace(token ? '/dashboard' : '/login');
-    }
+    // Show the right entry point for guests and signed-in users.
+    setHasSession(Boolean(localStorage.getItem('smavo_token')));
 
-  }, [router]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f8faff] relative overflow-hidden">
@@ -171,6 +167,13 @@ export default function HomePage() {
             <a href="#tentang" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Tentang</a>
             <a href="#fitur" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Fitur</a>
             <a href="#antrian" className="hidden sm:inline text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">Antrian</a>
+            <Link
+              href={hasSession ? '/dashboard' : '/login'}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-full border border-indigo-100 bg-white/80 text-indigo-600 shadow-sm hover:bg-indigo-50 hover:scale-[1.03] transition-all duration-300"
+            >
+              <Lock size={14} />
+              <span>{hasSession ? 'Dashboard' : 'Masuk'}</span>
+            </Link>
             <a
               href="#antrian"
               className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:scale-[1.03] transition-all duration-300"
@@ -207,14 +210,24 @@ export default function HomePage() {
 
           {/* CTA - Queue */}
           <div className="animate-fade-up-delay-2 flex flex-col items-center gap-3">
-            <a
-              href="#antrian"
-              className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-10 py-4 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
-              <Ticket size={18} className="relative z-10" />
-              <span className="relative z-10">Ambil Antrian</span>
-            </a>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <a
+                href="#antrian"
+                className="group relative inline-flex items-center gap-3 font-semibold text-sm text-white px-10 py-4 rounded-full overflow-hidden shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
+                <Ticket size={18} className="relative z-10" />
+                <span className="relative z-10">Ambil Antrian</span>
+              </a>
+
+              <Link
+                href={hasSession ? '/dashboard' : '/login'}
+                className="inline-flex items-center gap-3 font-semibold text-sm text-indigo-600 px-10 py-4 rounded-full bg-white/85 border border-indigo-100 shadow-lg shadow-slate-200/50 hover:bg-indigo-50 hover:shadow-xl hover:scale-[1.03] transition-all duration-300 active:scale-[0.98]"
+              >
+                <Lock size={18} />
+                <span>{hasSession ? 'Buka Dashboard' : 'Masuk Web'}</span>
+              </Link>
+            </div>
 
             <a
               href="#tentang"
@@ -230,7 +243,7 @@ export default function HomePage() {
       {/* ═══ TENTANG SMAVO ═══ */}
       <section id="tentang" ref={aboutRef} className="relative z-10 py-14 sm:py-28">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="max-w-3xl mx-auto text-center">
             {/* Left — Text */}
             <div>
               <div className="reveal inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-5">
@@ -258,46 +271,6 @@ export default function HomePage() {
                   Dari pengelolaan aset, keuangan BOS, data siswa dan guru, persuratan resmi, hingga
                   pemantauan kedisiplinan — semua terintegrasi, transparan, dan dapat diakses kapan saja.
                 </p>
-              </div>
-            </div>
-
-            {/* Right — School identity card */}
-            <div className="reveal">
-              <div className="bg-white/80 backdrop-blur border border-slate-100 rounded-3xl p-8 shadow-xl shadow-slate-200/30 relative overflow-hidden">
-                {/* Decorative gradient */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-indigo-100 to-transparent rounded-bl-full" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-violet-100 to-transparent rounded-tr-full" />
-
-                <div className="relative z-10">
-                  {/* School logo */}
-                  <div className="flex items-center gap-4 mb-8">
-                    <Image src="/logo-smavo.jpeg" alt="SMAVO" width={64} height={64} className="w-16 h-16 rounded-2xl shadow-lg object-cover" />
-                    <div>
-                      <h3 className="font-extrabold text-slate-800 text-lg">SMAN 2 Cibinong</h3>
-                      <p className="text-sm text-slate-500">SMAVO &middot; Kab. Bogor</p>
-                    </div>
-                  </div>
-
-                  {/* Info items */}
-                  <div className="space-y-4">
-                    {[
-                      { icon: MapPin, label: 'Alamat', value: 'Jl. Raya Jakarta-Bogor Km. 43, Cibinong, Bogor' },
-                      { icon: BookOpen, label: 'Kurikulum', value: 'Kurikulum Merdeka' },
-                      { icon: Award, label: 'Akreditasi', value: 'A (Unggul)' },
-                      { icon: Globe, label: 'NPSN', value: '20201485' },
-                    ].map((item) => (
-                      <div key={item.label} className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-50 to-indigo-50 border border-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-                          <item.icon size={15} className="text-indigo-500" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{item.label}</p>
-                          <p className="text-sm text-slate-700 font-medium">{item.value}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutGrid, Package, Wallet, GraduationCap, Users, FileText,
   LogOut, UserCog, ShieldAlert, Sun, Moon, Palette, KeyRound,
@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type Theme } from '@/lib/theme';
-import { isStandaloneMode } from '@/lib/pwa';
 import ChangePasswordModal from './components/ChangePasswordModal';
 
 const NAV = [
@@ -56,7 +55,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showDefaultPwWarning, setShowDefaultPwWarning] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large'>('normal');
-  const pwaChecked = useRef(false);
 
   const FONT_SIZES = [
     { value: 'small' as const, label: 'Kecil', icon: AArrowDown },
@@ -76,23 +74,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { value: 'colorful', icon: Palette, label: 'Color' },
   ];
 
-  // PWA gate: only run once on mount
+  // Load saved font size once on mount.
   useEffect(() => {
-    if (!isStandaloneMode()) { router.replace('/'); return; }
-    pwaChecked.current = true;
-
-    // Load saved font size
     const savedFontSize = localStorage.getItem('smavo_font_size') as 'small' | 'normal' | 'large';
     if (savedFontSize && ['small', 'normal', 'large'].includes(savedFontSize)) {
       setFontSize(savedFontSize);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auth & route guard: runs on every pathname change
   useEffect(() => {
-    if (!pwaChecked.current) return;
-
     const token = localStorage.getItem('smavo_token');
     const raw = localStorage.getItem('smavo_user');
     if (!token) { router.push('/login'); return; }

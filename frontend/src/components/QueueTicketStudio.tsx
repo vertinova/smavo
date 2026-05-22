@@ -12,6 +12,7 @@ import {
   Sparkles,
   Ticket,
   UserRound,
+  X,
 } from 'lucide-react';
 import { createQueueTicket as createRemoteQueueTicket, type QueueTicket as RemoteQueueTicket } from '@/lib/queue';
 
@@ -25,6 +26,8 @@ type QueueTicketImage = {
   createdAt: Date;
   qrPayload: string;
 };
+
+type DownloadStatus = 'pending' | 'downloaded' | 'failed';
 
 const PPDB_SERVICE = {
   name: 'PPDB SMAN 2 Cibinong',
@@ -149,26 +152,26 @@ function PremiumImageTicket({ ticket, qrDataUrl }: { ticket: QueueTicketImage; q
 
       <div className="relative p-7">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <img src="/logo-smavo.jpeg" alt="Logo SMAN 2 Cibinong" className="h-12 w-12 rounded-2xl border border-white/30 object-cover shadow-lg" />
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">SMAN 2 Cibinong</p>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">SMAN 2 Cibinong</p>
               <h3 className="text-lg font-extrabold leading-tight">Nomor Antrian</h3>
             </div>
           </div>
-          <div className="rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur">
+          <div className="shrink-0 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur">
             {ticket.status}
           </div>
         </div>
 
         <div className="mt-8 rounded-[24px] border border-white/20 bg-white/16 p-5 backdrop-blur-md">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/65">{ticket.service}</p>
+          <p className="break-words text-xs font-semibold uppercase tracking-[0.18em] text-white/65">{ticket.service}</p>
           <div className="mt-2 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[5.4rem] font-black leading-none tracking-normal">{ticket.number.split('-')[1]}</p>
+            <div className="min-w-0">
+              <p className="text-[5rem] font-black leading-none tracking-normal">{ticket.number.split('-')[1]}</p>
               <p className="mt-1 text-sm font-bold text-white/80">{ticket.number}</p>
             </div>
-            <div className="rounded-2xl bg-white p-2 shadow-xl">
+            <div className="shrink-0 rounded-2xl bg-white p-2 shadow-xl">
               {qrDataUrl ? <img src={qrDataUrl} alt="QR tiket antrian" className="h-24 w-24" /> : <div className="h-24 w-24 rounded-xl bg-slate-100" />}
             </div>
           </div>
@@ -200,9 +203,122 @@ function PremiumImageTicket({ ticket, qrDataUrl }: { ticket: QueueTicketImage; q
   );
 }
 
+function QueueTicketResultModal({
+  ticket,
+  downloadStatus,
+  onClose,
+}: {
+  ticket: QueueTicketImage;
+  downloadStatus: DownloadStatus;
+  onClose: () => void;
+}) {
+  const queueNumber = ticket.number.split('-')[1] ?? ticket.number;
+  const isDownloaded = downloadStatus === 'downloaded';
+  const isFailed = downloadStatus === 'failed';
+  const isPending = downloadStatus === 'pending';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+        aria-label="Tutup pop up nomor antrian"
+        onClick={onClose}
+      />
+
+      <div className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] bg-white shadow-2xl shadow-slate-950/25">
+        <div className={`absolute inset-x-0 top-0 h-36 bg-gradient-to-br ${PPDB_SERVICE.accent} opacity-95`} />
+        <div className="absolute right-[-72px] top-[-72px] h-48 w-48 rounded-full bg-white/20" />
+        <div className="absolute left-[-48px] top-24 h-32 w-32 rounded-full bg-cyan-200/30 blur-2xl" />
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur transition hover:bg-white/30"
+          aria-label="Tutup"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="relative z-10 p-5 sm:p-6">
+          <div className="flex min-w-0 items-center gap-3 pr-10 text-white">
+            <img src="/logo-smavo.jpeg" alt="SMAVO" className="h-12 w-12 shrink-0 rounded-2xl border border-white/40 object-cover shadow-lg" />
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-bold uppercase tracking-[0.2em] text-white/75">PPDB SMAVO</p>
+              <h3 className="text-base font-black leading-tight sm:text-lg">Nomor Antrian Berhasil Dibuat</h3>
+            </div>
+          </div>
+
+          <div className="mt-7 rounded-[24px] border border-slate-100 bg-white p-5 text-center shadow-xl shadow-slate-900/10">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Nomor Antrian</p>
+            <p className="mt-2 break-words text-[4.4rem] font-black leading-none tracking-normal text-slate-950 sm:text-[5rem]">
+              {queueNumber}
+            </p>
+            <p className="mt-2 break-words text-sm font-black text-indigo-600">{ticket.number}</p>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
+              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Nama</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.visitor}</p>
+              </div>
+              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Estimasi</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.estimate}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 ${
+            isDownloaded
+              ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
+              : isFailed
+                ? 'border-rose-100 bg-rose-50 text-rose-800'
+              : 'border-amber-100 bg-amber-50 text-amber-800'
+          }`}>
+            {isDownloaded ? (
+              <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+            ) : isFailed ? (
+              <Download size={20} className="mt-0.5 shrink-0 text-rose-600" />
+            ) : (
+              <Loader2 size={20} className="mt-0.5 shrink-0 animate-spin text-amber-600" />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-black">
+                {isDownloaded
+                  ? 'Tiket PNG sudah diunduh'
+                  : isFailed
+                    ? 'Tiket belum berhasil diunduh'
+                    : 'Tiket sedang disiapkan untuk download'}
+              </p>
+              <p className="mt-1 text-xs font-medium leading-relaxed opacity-80">
+                {isDownloaded
+                  ? 'Silakan simpan file tiket dan tunjukkan nomor ini saat dipanggil.'
+                  : isFailed
+                    ? 'Nomor tetap tampil di layar. Silakan coba ambil ulang jika file belum masuk ke perangkat.'
+                  : 'Biarkan pop up ini terbuka sebentar sampai proses download selesai.'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-slate-950/20 transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60"
+            disabled={isPending}
+          >
+            {isDownloaded ? 'Selesai' : isFailed ? 'Tutup' : 'Menunggu Download...'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function QueueTicketStudio() {
   const [visitor, setVisitor] = useState('');
   const [ticket, setTicket] = useState<QueueTicketImage | null>(null);
+  const [modalTicket, setModalTicket] = useState<QueueTicketImage | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('pending');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [lastIssued, setLastIssued] = useState<QueueTicketImage | null>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -242,15 +358,26 @@ export default function QueueTicketStudio() {
 
         if (!blob || cancelled) {
           setMessage('Tiket gagal diunduh. Coba tekan tombol sekali lagi.');
+          setDownloadStatus('failed');
+          setTicket(null);
+          setQrDataUrl('');
           return;
         }
 
         downloadBlob(blob, `tiket-antrian-${ticket.number}.png`);
         saveDownloadedNumber(ticket.number);
         setLastIssued(ticket);
+        setDownloadStatus('downloaded');
         setTicket(null);
         setQrDataUrl('');
-        setMessage(`Nomor ${ticket.number} berhasil diunduh. Sistem siap mengambil nomor berikutnya.`);
+        setMessage(`Nomor ${ticket.number} berhasil dibuat dan tiket PNG sudah diunduh.`);
+      } catch {
+        if (!cancelled) {
+          setDownloadStatus('failed');
+          setTicket(null);
+          setQrDataUrl('');
+          setMessage('Tiket gagal diunduh. Coba ambil ulang jika file belum masuk ke perangkat.');
+        }
       } finally {
         if (!cancelled) {
           setPendingDownload(false);
@@ -297,9 +424,12 @@ export default function QueueTicketStudio() {
     setIsBusy(true);
     setMessage('Membuat nomor antrian dan menyiapkan tiket...');
     setLastIssued(null);
+    setModalTicket(null);
+    setDownloadStatus('pending');
 
     try {
       const nextTicket = await generateUniqueTicket(cleanName);
+      setModalTicket(nextTicket);
       setTicket(nextTicket);
       setPendingDownload(true);
     } catch {
@@ -307,6 +437,11 @@ export default function QueueTicketStudio() {
       setPendingDownload(false);
       setMessage('Nomor antrian belum bisa dibuat. Coba lagi sebentar.');
     }
+  };
+
+  const closeResultModal = () => {
+    if (downloadStatus === 'pending') return;
+    setModalTicket(null);
   };
 
   return (
@@ -321,18 +456,18 @@ export default function QueueTicketStudio() {
             Ambil nomor antrian PPDB dari ponsel.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
-            Isi nama calon peserta, lalu tiket image akan otomatis terunduh ke ponsel.
+            Isi nama calon peserta, nomor akan tampil di layar dan tiket PNG otomatis terunduh ke perangkat.
           </p>
         </div>
 
         <div className="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-xl shadow-slate-200/50 backdrop-blur">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-lg shadow-indigo-500/20">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-lg shadow-indigo-500/20">
               <Sparkles size={21} />
             </div>
             <div className="min-w-0">
               <h3 className="font-extrabold text-slate-900">Nomor Antrian PPDB</h3>
-              <p className="truncate text-xs text-slate-500">Satu tombol, tiket langsung download.</p>
+              <p className="text-xs leading-relaxed text-slate-500">Nomor tampil sebagai pop up, tiket langsung download.</p>
             </div>
           </div>
 
@@ -379,11 +514,11 @@ export default function QueueTicketStudio() {
             <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
               <div className="flex items-start gap-3">
                 <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">Tiket Terakhir</p>
-                  <p className="mt-1 text-2xl font-black tracking-normal text-emerald-900">{lastIssued.number}</p>
+                  <p className="mt-1 break-words text-2xl font-black tracking-normal text-emerald-900">{lastIssued.number}</p>
                   <p className="mt-1 text-xs font-medium text-emerald-700">
-                    Nomor ini sudah dikunci sebagai terdownload di perangkat ini.
+                    File tiket PNG sudah diunduh ke perangkat ini.
                   </p>
                 </div>
               </div>
@@ -405,6 +540,14 @@ export default function QueueTicketStudio() {
             <PremiumImageTicket ticket={ticket} qrDataUrl={qrDataUrl} />
           </div>
         </div>
+      ) : null}
+
+      {modalTicket ? (
+        <QueueTicketResultModal
+          ticket={modalTicket}
+          downloadStatus={downloadStatus}
+          onClose={closeResultModal}
+        />
       ) : null}
     </section>
   );
