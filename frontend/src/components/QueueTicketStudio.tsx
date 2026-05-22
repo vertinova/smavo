@@ -38,11 +38,21 @@ type QueueTicketForm = {
   serviceChoice: string;
 };
 
-const SPMB_SERVICE = {
-  name: 'SPMB SMAN 2 Cibinong',
-  prefix: 'SPMB',
-  accent: 'from-indigo-600 to-cyan-600',
-  wait: 6,
+const SERVICE_CONFIG: Record<string, { name: string; prefix: string; accent: string; wait: number; flow: string }> = {
+  'Verifikasi SPMB': {
+    name: 'Verifikasi SPMB SMAN 2 Cibinong',
+    prefix: 'V',
+    accent: 'from-indigo-600 to-cyan-600',
+    wait: 6,
+    flow: 'Menunggu dipanggil, menuju verifikator, lanjut ke operator, lalu selesai.',
+  },
+  'Layanan Informasi': {
+    name: 'Layanan Informasi SMAN 2 Cibinong',
+    prefix: 'I',
+    accent: 'from-amber-500 to-cyan-600',
+    wait: 4,
+    flow: 'Menunggu dipanggil, menuju meja informasi, lalu selesai.',
+  },
 };
 
 const registrationPathOptions = [
@@ -54,8 +64,8 @@ const registrationPathOptions = [
 ];
 
 const serviceChoiceOptions = [
-  'Informasi SPMB',
-  'Verifikasi Berkas',
+  'Verifikasi SPMB',
+  'Layanan Informasi',
 ];
 
 const DOWNLOADED_NUMBERS_KEY = 'smavo_downloaded_queue_numbers';
@@ -87,14 +97,20 @@ function formatQueueLabel(value?: string | null) {
   return (value ?? 'SPMB').replace(/^PPDB$/i, 'SPMB');
 }
 
+function getServiceConfig(serviceChoice: string) {
+  if (/informasi/i.test(serviceChoice)) return SERVICE_CONFIG['Layanan Informasi'];
+  return SERVICE_CONFIG[serviceChoice] ?? SERVICE_CONFIG['Verifikasi SPMB'];
+}
+
 function makeLocalTicket(form: QueueTicketForm): QueueTicketImage {
-  const storageKey = `smavo_queue_${SPMB_SERVICE.prefix}`;
+  const serviceConfig = getServiceConfig(form.serviceChoice);
+  const storageKey = `smavo_queue_${serviceConfig.prefix}`;
   const current = Number(localStorage.getItem(storageKey) ?? '0') + 1;
   localStorage.setItem(storageKey, String(current));
 
   const now = new Date();
-  const number = `${SPMB_SERVICE.prefix}-${String(current).padStart(3, '0')}`;
-  const id = `SMAVO-${SPMB_SERVICE.prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(current).padStart(4, '0')}`;
+  const number = `${serviceConfig.prefix}-${String(current).padStart(3, '0')}`;
+  const id = `SMAVO-${serviceConfig.prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(current).padStart(4, '0')}`;
 
   return {
     id,
@@ -103,9 +119,9 @@ function makeLocalTicket(form: QueueTicketForm): QueueTicketImage {
     originSchool: form.originSchool,
     registrationPath: form.registrationPath,
     serviceChoice: form.serviceChoice,
-    service: SPMB_SERVICE.name,
+    service: serviceConfig.name,
     status: 'Menunggu',
-    estimate: `${Math.max(SPMB_SERVICE.wait, current * SPMB_SERVICE.wait)} menit`,
+    estimate: `${Math.max(serviceConfig.wait, current * serviceConfig.wait)} menit`,
     createdAt: now,
     qrPayload: JSON.stringify({
       system: 'SMAVO Queue',
@@ -116,7 +132,7 @@ function makeLocalTicket(form: QueueTicketForm): QueueTicketImage {
       originSchool: form.originSchool,
       registrationPath: form.registrationPath,
       serviceChoice: form.serviceChoice,
-      service: SPMB_SERVICE.name,
+      service: serviceConfig.name,
       createdAt: now.toISOString(),
     }),
   };
@@ -159,16 +175,16 @@ function downloadBlob(blob: Blob, fileName: string) {
 }
 
 function displayQueueNumber(number: string) {
-  const suffix = number.split('-').pop() ?? number;
-  return `${SPMB_SERVICE.prefix}-${suffix}`;
+  return formatQueueLabel(number);
 }
 
 function PremiumImageTicket({ ticket }: { ticket: QueueTicketImage }) {
   const displayNumber = displayQueueNumber(ticket.number);
+  const serviceConfig = getServiceConfig(ticket.serviceChoice);
 
   return (
     <div className="relative w-[430px] overflow-hidden rounded-[28px] bg-slate-950 text-white shadow-2xl shadow-indigo-950/20">
-      <div className={`absolute inset-0 bg-gradient-to-br ${SPMB_SERVICE.accent} opacity-90`} />
+      <div className={`absolute inset-0 bg-gradient-to-br ${serviceConfig.accent} opacity-90`} />
       <div className="absolute inset-x-0 top-0 h-36 bg-white/15 blur-3xl" />
       <div
         className="absolute inset-0 opacity-[0.14]"
@@ -225,7 +241,7 @@ function PremiumImageTicket({ ticket }: { ticket: QueueTicketImage }) {
         </div>
 
         <p className="mt-5 rounded-2xl bg-white/12 px-4 py-3 text-center text-[12px] font-semibold leading-relaxed text-white/78">
-          Simpan tiket ini dan tunjukkan saat nomor dipanggil.
+          {serviceConfig.flow}
         </p>
       </div>
     </div>
@@ -243,6 +259,7 @@ function QueueTicketResultModal({
 }) {
   const displayNumber = displayQueueNumber(ticket.number);
   const queueNumber = displayNumber.split('-')[1] ?? displayNumber;
+  const serviceConfig = getServiceConfig(ticket.serviceChoice);
   const isDownloaded = downloadStatus === 'downloaded';
   const isFailed = downloadStatus === 'failed';
   const isPending = downloadStatus === 'pending';
@@ -257,7 +274,7 @@ function QueueTicketResultModal({
       />
 
       <div className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] bg-white shadow-2xl shadow-slate-950/25">
-        <div className={`absolute inset-x-0 top-0 h-36 bg-gradient-to-br ${SPMB_SERVICE.accent} opacity-95`} />
+        <div className={`absolute inset-x-0 top-0 h-36 bg-gradient-to-br ${serviceConfig.accent} opacity-95`} />
         <div className="absolute right-[-72px] top-[-72px] h-48 w-48 rounded-full bg-white/20" />
         <div className="absolute left-[-48px] top-24 h-32 w-32 rounded-full bg-cyan-200/30 blur-2xl" />
 
@@ -274,7 +291,7 @@ function QueueTicketResultModal({
           <div className="flex min-w-0 items-center gap-3 pr-10 text-white">
             <img src="/logo-smavo.jpeg" alt="SMAVO" className="h-12 w-12 shrink-0 rounded-2xl border border-white/40 object-cover shadow-lg" />
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-bold uppercase tracking-[0.2em] text-white/75">SPMB SMAVO</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-[0.2em] text-white/75">Antrean SMAVO</p>
               <h3 className="text-base font-black leading-tight sm:text-lg">Nomor Antrean Berhasil Dibuat</h3>
             </div>
           </div>
@@ -304,8 +321,9 @@ function QueueTicketResultModal({
                 <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.serviceChoice}</p>
               </div>
               <div className="min-w-0 rounded-2xl bg-slate-50 p-4 sm:col-span-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Estimasi</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Estimasi dan Alur</p>
                 <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.estimate}</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{serviceConfig.flow}</p>
               </div>
             </div>
           </div>
@@ -431,7 +449,6 @@ export default function QueueTicketStudio() {
           originSchool: form.originSchool,
           registrationPath: form.registrationPath,
           serviceChoice: form.serviceChoice,
-          containerId: 'container-1',
         });
         nextTicket = mapRemoteTicket(result.data);
       } catch {
@@ -496,13 +513,13 @@ export default function QueueTicketStudio() {
         <div className="mb-6 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50 px-4 py-1.5">
             <Ticket size={13} className="text-cyan-600" />
-            <span className="text-xs font-semibold text-cyan-700">Antrean SPMB Digital</span>
+            <span className="text-xs font-semibold text-cyan-700">Antrean Layanan Digital</span>
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-            Ambil nomor antrean SPMB dari ponsel.
+            Ambil nomor antrean layanan dari ponsel.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
-            Isi nama calon peserta, nomor akan tampil di layar dan tiket PNG otomatis terunduh ke perangkat.
+            Pilih Verifikasi SPMB atau Layanan Informasi, lalu nomor akan tampil dan tiket PNG otomatis terunduh.
           </p>
         </div>
 
@@ -512,7 +529,7 @@ export default function QueueTicketStudio() {
               <Sparkles size={21} />
             </div>
             <div className="min-w-0">
-              <h3 className="font-extrabold text-slate-900">Nomor Antrean SPMB</h3>
+              <h3 className="font-extrabold text-slate-900">Nomor Antrean Layanan</h3>
               <p className="text-xs leading-relaxed text-slate-500">Nomor tampil sebagai pop up, tiket langsung download.</p>
             </div>
           </div>
@@ -611,7 +628,7 @@ export default function QueueTicketStudio() {
           <div className="mt-5 flex items-start gap-3 rounded-2xl bg-slate-950 px-4 py-4 text-white">
             <ShieldCheck size={18} className="mt-0.5 shrink-0 text-cyan-300" />
             <p className="text-xs leading-relaxed text-slate-300">
-              Nomor dibuat dari sistem realtime dan dicek terhadap riwayat download perangkat ini agar tiket yang sama tidak terunduh dua kali.
+              Verifikasi SPMB berjalan melalui verifikator lalu operator. Layanan Informasi selesai di meja informasi.
             </p>
           </div>
         </div>

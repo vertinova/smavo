@@ -198,7 +198,7 @@ function ServiceTile({ container, featured = false }: { container: QueueContaine
 export default function QueueDisplayPage() {
   const { snapshot, connected, connect, refresh } = useQueueStore();
   const [mode, setMode] = useState<DisplayMode>('tv');
-  const [focusId, setFocusId] = useState('container-1');
+  const [focusId, setFocusId] = useState('verifikator-1');
   const [volume, setVolume] = useState(0.85);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const lastSpokenKey = useRef('');

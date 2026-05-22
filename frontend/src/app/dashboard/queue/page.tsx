@@ -78,11 +78,11 @@ function toContainerConfig(container: QueueContainer): QueueContainerConfig {
 function makeNewContainer(index: number): QueueContainerConfig {
   const number = index + 1;
   return {
-    id: `container-${number}`,
-    name: `Operator ${number}`,
-    service: 'SPMB',
-    code: 'SPMB',
-    operator: `Operator ${number}`,
+    id: `verifikator-${number}`,
+    name: `Verifikator ${number}`,
+    service: 'VERIFIKASI SPMB',
+    code: 'V',
+    operator: `Verifikator ${number}`,
     isPaused: false,
     accent: accentOptions[index % accentOptions.length].value,
   };
@@ -208,6 +208,8 @@ function ContainerCard({
 }) {
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
+  const activeService = active?.service?.toUpperCase() ?? '';
+  const isVerificationStep = activeService === 'VERIFIKASI SPMB';
 
   return (
     <motion.div
@@ -277,7 +279,7 @@ function ContainerCard({
           <RotateCcw className="mx-auto mb-1" size={16} /> Recall
         </button>
         <button disabled={busy || !active} onClick={() => onAction(container.id, 'done')} className="rounded-2xl bg-emerald-400/90 px-3 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.02] disabled:opacity-40">
-          <CheckCircle2 className="mx-auto mb-1" size={16} /> Selesai
+          <CheckCircle2 className="mx-auto mb-1" size={16} /> {isVerificationStep ? 'Ke Operator' : 'Selesai'}
         </button>
         <button disabled={busy || !active} onClick={() => onAction(container.id, 'skip')} className="rounded-2xl bg-rose-400/90 px-3 py-3 text-xs font-black text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] disabled:opacity-40">
           <SkipForward className="mx-auto mb-1" size={16} /> Lewati
@@ -325,12 +327,12 @@ function ContainerSettingsPanel({
             <Settings size={13} />
             Pengaturan Admin
           </div>
-          <h2 className={`text-xl font-black ${ui.text}`}>Operator Layanan</h2>
+          <h2 className={`text-xl font-black ${ui.text}`}>Loket Layanan</h2>
           <p className={`mt-1 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Ubah jumlah operator, nama loket, layanan, kode nomor, operator, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
+            Ubah jumlah loket, nama loket, layanan, kode nomor, petugas, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
           </p>
           <p className={`mt-2 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Cara pakai: ubah angka <span className="font-black">Jumlah</span> untuk tambah/kurangi operator, edit kolom nama/layanan, lalu klik <span className="font-black">Simpan Operator</span>.
+            Flow utama: Verifikasi SPMB dipanggil ke verifikator, setelah selesai otomatis masuk antrean Operator SPMB. Layanan Informasi selesai di meja informasi.
           </p>
         </div>
 
@@ -372,7 +374,7 @@ function ContainerSettingsPanel({
             className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-60"
           >
             <Save size={16} />
-            {busy ? 'Menyimpan...' : 'Simpan Operator'}
+            {busy ? 'Menyimpan...' : 'Simpan Loket'}
           </button>
         </div>
 
@@ -380,12 +382,12 @@ function ContainerSettingsPanel({
           {draft.map((container, index) => (
             <div key={`${container.id}-${index}`} className={`grid gap-3 rounded-3xl border p-4 lg:grid-cols-[1.1fr_1.1fr_0.7fr_1fr_0.75fr_auto] ${ui.subPanel}`}>
               <label className="min-w-0">
-                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Nama Operator</span>
+                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Nama Loket</span>
                 <input
                   value={container.name}
                   onChange={(event) => onChange(index, { name: event.target.value })}
                   className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="Operator 1"
+                  placeholder="Verifikator 1"
                 />
               </label>
 
@@ -395,7 +397,7 @@ function ContainerSettingsPanel({
                   value={container.service}
                   onChange={(event) => onChange(index, { service: event.target.value })}
                   className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="SPMB"
+                  placeholder="VERIFIKASI SPMB"
                 />
               </label>
 
@@ -406,17 +408,17 @@ function ContainerSettingsPanel({
                   maxLength={8}
                   onChange={(event) => onChange(index, { code: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })}
                   className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black uppercase outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="SPMB"
+                  placeholder="V"
                 />
               </label>
 
               <label className="min-w-0">
-                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Operator</span>
+                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Petugas</span>
                 <input
                   value={container.operator}
                   onChange={(event) => onChange(index, { operator: event.target.value })}
                   className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="Petugas SPMB"
+                  placeholder="Verifikator 1"
                 />
               </label>
 
@@ -564,10 +566,10 @@ export default function QueueDashboardPage() {
     try {
       const result = await updateQueueContainers(containerDraft.map((container, index) => ({
         ...container,
-        name: container.name.trim() || `Operator ${index + 1}`,
-        service: container.service.trim() || 'SPMB',
-        code: container.code.trim() || 'SPMB',
-        operator: container.operator.trim() || `Operator ${index + 1}`,
+        name: container.name.trim() || `Verifikator ${index + 1}`,
+        service: container.service.trim() || 'VERIFIKASI SPMB',
+        code: container.code.trim() || 'V',
+        operator: container.operator.trim() || `Verifikator ${index + 1}`,
       })));
       setSnapshot(result.snapshot);
       setContainerDraft(result.snapshot.containers.map(toContainerConfig));
@@ -615,7 +617,7 @@ export default function QueueDashboardPage() {
           </div>
           <h1 className={`text-3xl font-black tracking-tight lg:text-5xl ${ui.text}`}>Command Center Antrean</h1>
           <p className={`mt-2 max-w-2xl text-sm ${ui.muted}`}>
-            Dashboard petugas untuk memanggil, melewati, menyelesaikan, dan memonitor seluruh operator pelayanan SPMB SMAN 2 Cibinong secara realtime.
+            Dashboard petugas untuk memanggil dan memonitor alur Verifikasi SPMB, Operator SPMB, dan Layanan Informasi secara realtime.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -681,7 +683,7 @@ export default function QueueDashboardPage() {
         <StatCard label="Sedang Dipanggil" value={latestCalled ? formatQueueNumber(latestCalled.number) : '-'} icon={Megaphone} hint={latestCalled ? formatQueueService(latestCalled.service) : 'Belum ada panggilan aktif'} ui={ui} />
         <StatCard label="Selesai" value={snapshot.analytics.done} icon={CheckCircle2} hint="Layanan berhasil selesai" ui={ui} />
         <StatCard label="Rata-rata Tunggu" value={`${snapshot.analytics.averageWaitMinutes}m`} icon={Clock3} hint={`Peak hour: ${snapshot.analytics.peakHour}`} ui={ui} />
-        <StatCard label="Operator Aktif" value={snapshot.analytics.activeContainers} icon={Activity} hint="Operator yang tidak pause" ui={ui} />
+        <StatCard label="Loket Aktif" value={snapshot.analytics.activeContainers} icon={Activity} hint="Loket yang tidak pause" ui={ui} />
       </div>
 
       <div className={`relative mt-6 rounded-3xl border p-4 shadow-xl backdrop-blur-xl ${ui.panel}`}>
