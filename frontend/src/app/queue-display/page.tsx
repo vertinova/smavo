@@ -1,16 +1,16 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Maximize2, RadioTower, Volume2 } from 'lucide-react';
-import { speakQueueCall, type QueueContainer } from '@/lib/queue';
+import { speakQueueCall, unlockQueueAudio, type QueueContainer } from '@/lib/queue';
 import { useQueueStore } from '@/lib/queueStore';
 
 type DisplayMode = 'grid' | 'focus' | 'tv';
 
 const tickerText = [
-  'Selamat datang di layanan PPDB SMAN 2 Cibinong.',
+  'Selamat datang di layanan SPMB SMAN 2 Cibinong.',
   'Siapkan berkas pendaftaran sebelum nomor antrian dipanggil.',
   'Perhatikan layar informasi dan suara panggilan petugas.',
   'SMAVO Super App mendukung pelayanan sekolah yang cepat, transparan, dan modern.',
@@ -96,10 +96,12 @@ function ServiceTile({ container, featured = false }: { container: QueueContaine
 }
 
 export default function QueueDisplayPage() {
-  const { snapshot, connected, connect, refresh, lastCalledTicket } = useQueueStore();
+  const { snapshot, connected, connect, refresh } = useQueueStore();
   const [mode, setMode] = useState<DisplayMode>('tv');
   const [focusId, setFocusId] = useState('container-1');
   const [volume, setVolume] = useState(0.85);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const lastSpokenKey = useRef('');
   const clock = useClock();
 
   useEffect(() => {
@@ -113,12 +115,32 @@ export default function QueueDisplayPage() {
   );
 
   useEffect(() => {
-    if (!lastCalledTicket) return;
-    const container = snapshot.containers.find((item) => item.activeTicket?.id === lastCalledTicket);
+    if (snapshot.containers.length && !snapshot.containers.some((container) => container.id === focusId)) {
+      setFocusId(snapshot.containers[0].id);
+    }
+  }, [focusId, snapshot.containers]);
+
+  useEffect(() => {
+    if (!audioEnabled) return;
+    const container = snapshot.containers
+      .filter((item) => item.activeTicket?.calledAt)
+      .sort((a, b) => new Date(b.activeTicket!.calledAt!).getTime() - new Date(a.activeTicket!.calledAt!).getTime())[0];
+    const active = container?.activeTicket;
+    const nextKey = active ? `${active.id}-${active.calledAt ?? active.createdAt}` : '';
+    if (!container || !active || !nextKey || lastSpokenKey.current === nextKey) return;
+    lastSpokenKey.current = nextKey;
+    speakQueueCall(active, container, volume);
+  }, [audioEnabled, snapshot.containers, volume]);
+
+  const enableAudio = () => {
+    const enabled = unlockQueueAudio(volume);
+    setAudioEnabled(enabled);
+    const container = snapshot.containers.find((item) => item.activeTicket);
     if (container?.activeTicket) {
+      lastSpokenKey.current = `${container.activeTicket.id}-${container.activeTicket.calledAt ?? container.activeTicket.createdAt}`;
       speakQueueCall(container.activeTicket, container, volume);
     }
-  }, [lastCalledTicket, snapshot.containers, volume]);
+  };
 
   const featuredContainer = mode === 'grid'
     ? snapshot.containers.find((container) => container.activeTicket) ?? focusedContainer
@@ -185,6 +207,9 @@ export default function QueueDisplayPage() {
           {connected ? 'LIVE SYNC' : 'RECONNECTING'}
         </div>
         <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-white/10 bg-white/10 p-2 backdrop-blur-xl">
+          <button onClick={enableAudio} className={`rounded-2xl px-4 py-2 text-xs font-black uppercase transition ${audioEnabled ? 'bg-emerald-300 text-slate-950' : 'bg-cyan-300 text-slate-950'}`}>
+            {audioEnabled ? 'Suara Aktif' : 'Aktifkan Suara'}
+          </button>
           {(['tv', 'grid', 'focus'] as DisplayMode[]).map((item) => (
             <button key={item} onClick={() => setMode(item)} className={`rounded-2xl px-4 py-2 text-xs font-black uppercase transition ${mode === item ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/10'}`}>
               {item}

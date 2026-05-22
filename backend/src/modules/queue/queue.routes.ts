@@ -10,6 +10,7 @@ import {
   recallTicket,
   setContainerPaused,
   skipTicket,
+  updateQueueContainers,
 } from './queue.store.js';
 
 const router = Router();
@@ -18,6 +19,18 @@ const clients = new Set<Response>();
 const createTicketSchema = z.object({
   visitorName: z.string().min(2).max(120),
   containerId: z.string().optional(),
+});
+
+const updateContainersSchema = z.object({
+  containers: z.array(z.object({
+    id: z.string().min(1).max(80).optional(),
+    name: z.string().min(1).max(80),
+    service: z.string().min(1).max(80),
+    code: z.string().min(1).max(8).regex(/^[a-zA-Z0-9-]+$/),
+    operator: z.string().max(80).optional(),
+    isPaused: z.boolean().optional(),
+    accent: z.enum(['cyan', 'violet', 'emerald', 'amber', 'rose']).optional(),
+  })).min(1).max(12),
 });
 
 function broadcastQueueState() {
@@ -67,6 +80,17 @@ router.post('/tickets', async (req: Request, res: Response, next: NextFunction) 
     const ticket = createQueueTicket(payload.visitorName, payload.containerId);
     broadcastQueueState();
     res.status(201).json({ success: true, data: ticket, snapshot: getQueueSnapshot() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/containers', authenticate, authorize('ADMIN'), (req, res, next) => {
+  try {
+    const payload = updateContainersSchema.parse(req.body);
+    const containers = updateQueueContainers(payload.containers);
+    broadcastQueueState();
+    res.json({ success: true, data: containers, snapshot: getQueueSnapshot() });
   } catch (err) {
     next(err);
   }

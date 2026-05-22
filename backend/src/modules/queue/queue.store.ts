@@ -10,6 +10,12 @@ export type QueueContainer = {
   accent: string;
 };
 
+export type QueueContainerInput = Partial<QueueContainer> & {
+  name: string;
+  service: string;
+  code: string;
+};
+
 export type QueueTicket = {
   id: string;
   number: string;
@@ -58,8 +64,10 @@ type QueueSnapshot = {
   generatedAt: string;
 };
 
-const containers: QueueContainer[] = [
-  { id: 'container-1', name: 'Container 1', service: 'PPDB', code: 'PPDB', operator: 'Petugas PPDB', isPaused: false, accent: 'cyan' },
+const accents = ['cyan', 'violet', 'emerald', 'amber', 'rose'];
+
+let containers: QueueContainer[] = [
+  { id: 'container-1', name: 'Container 1', service: 'SPMB', code: 'SPMB', operator: 'Petugas SPMB', isPaused: false, accent: 'cyan' },
   { id: 'container-2', name: 'Container 2', service: 'Tata Usaha', code: 'TU', operator: 'Petugas TU', isPaused: false, accent: 'violet' },
   { id: 'container-3', name: 'Container 3', service: 'BK', code: 'BK', operator: 'Petugas BK', isPaused: false, accent: 'emerald' },
   { id: 'container-4', name: 'Container 4', service: 'Legalisir', code: 'LGL', operator: 'Petugas Legalisir', isPaused: false, accent: 'amber' },
@@ -84,6 +92,24 @@ function nowIso() {
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeCode(value: string, fallback: string) {
+  const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  return cleaned || fallback;
+}
+
+function makeUniqueCode(code: string, used: Set<string>, index: number) {
+  if (!used.has(code)) return code;
+
+  const base = code.slice(0, 6) || `C${index + 1}`;
+  let suffix = 2;
+  let nextCode = `${base}${suffix}`;
+  while (used.has(nextCode)) {
+    suffix += 1;
+    nextCode = `${base}${suffix}`;
+  }
+  return nextCode.slice(0, 8);
 }
 
 function addEvent(event: Omit<QueueEvent, 'id' | 'createdAt'>) {
@@ -180,6 +206,40 @@ export function getQueueSnapshot(): QueueSnapshot {
   };
 }
 
+export function updateQueueContainers(inputs: QueueContainerInput[]) {
+  const usedIds = new Set<string>();
+  const usedCodes = new Set<string>();
+
+  containers = inputs.map((input, index) => {
+    const fallbackId = `container-${index + 1}`;
+    const incomingId = input.id?.trim() || fallbackId;
+    const id = usedIds.has(incomingId) ? fallbackId : incomingId;
+    usedIds.add(id);
+
+    const existing = containers.find((container) => container.id === id);
+    const fallbackCode = `C${index + 1}`;
+    const code = makeUniqueCode(normalizeCode(input.code, fallbackCode), usedCodes, index);
+    usedCodes.add(code);
+
+    return {
+      id,
+      name: input.name.trim() || `Container ${index + 1}`,
+      service: input.service.trim() || `Layanan ${index + 1}`,
+      code,
+      operator: input.operator?.trim() || `Petugas ${input.service.trim() || `Container ${index + 1}`}`,
+      isPaused: input.isPaused ?? existing?.isPaused ?? false,
+      accent: accents.includes(input.accent ?? '') ? input.accent! : accents[index % accents.length],
+    };
+  });
+
+  addEvent({
+    type: 'RESUMED',
+    message: `Konfigurasi container diperbarui menjadi ${containers.length} container`,
+  });
+
+  return containers;
+}
+
 export function createQueueTicket(visitorName: string, containerId = 'container-1') {
   const container = containers.find((item) => item.id === containerId) ?? containers[0];
   const counterKey = `${container.code}-${new Date().toISOString().slice(0, 10)}`;
@@ -212,7 +272,8 @@ export function callNextTicket(containerId: string) {
   const container = containers.find((item) => item.id === containerId);
   if (!container || container.isPaused) return null;
 
-  finishActiveTicket(containerId);
+  if (activeFor(containerId)) return null;
+
   const next = waitingFor(containerId)[0];
   if (!next) return null;
 

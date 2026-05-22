@@ -37,18 +37,46 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   },
   connect: () => {
     let closed = false;
-    const source = openQueueEventSource((snapshot) => {
-      if (!closed) {
-        get().setSnapshot(snapshot);
-        set({ connected: true });
-      }
-    });
+    let source: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    source.onerror = () => set({ connected: false });
+    const startStream = () => {
+      if (closed) return;
+
+      source?.close();
+      source = openQueueEventSource((snapshot) => {
+        if (!closed) {
+          get().setSnapshot(snapshot);
+          set({ connected: true });
+        }
+      });
+
+      source.onopen = () => {
+        if (!closed) set({ connected: true });
+      };
+
+      source.onerror = () => {
+        if (closed) return;
+
+        set({ connected: false });
+        source?.close();
+        reconnectTimer = setTimeout(startStream, 2000);
+      };
+    };
+
+    startStream();
+
+    const pollTimer = setInterval(() => {
+      get().refresh().catch(() => {
+        if (!closed) set({ connected: false });
+      });
+    }, 3000);
 
     return () => {
       closed = true;
-      source.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      clearInterval(pollTimer);
+      source?.close();
       set({ connected: false });
     };
   },

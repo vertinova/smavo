@@ -31,6 +31,8 @@ export type QueueContainer = {
   skippedCount: number;
 };
 
+export type QueueContainerConfig = Pick<QueueContainer, 'id' | 'name' | 'service' | 'code' | 'operator' | 'isPaused' | 'accent'>;
+
 export type QueueEvent = {
   id: string;
   type: 'CREATED' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED';
@@ -103,6 +105,13 @@ export async function pauseContainer(containerId: string, paused: boolean) {
   return data;
 }
 
+export async function updateQueueContainers(containers: QueueContainerConfig[]) {
+  const { data } = await api.put<{ success: boolean; data: QueueContainerConfig[]; snapshot: QueueSnapshot }>('/queue/containers', {
+    containers,
+  });
+  return data;
+}
+
 export function openQueueEventSource(onSnapshot: (snapshot: QueueSnapshot) => void) {
   const source = new EventSource(`${QUEUE_API_URL}/queue/events`);
   source.onmessage = (event) => {
@@ -115,13 +124,45 @@ export function openQueueEventSource(onSnapshot: (snapshot: QueueSnapshot) => vo
   return source;
 }
 
+function getPreferredVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  return voices.find((voice) => voice.lang.toLowerCase().startsWith('id'))
+    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('ms'))
+    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('en'))
+    ?? voices[0];
+}
+
+export function unlockQueueAudio(volume = 0.5) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return false;
+
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  synth.resume();
+
+  const utterance = new SpeechSynthesisUtterance('Suara antrian aktif.');
+  utterance.lang = 'id-ID';
+  utterance.rate = 0.95;
+  utterance.pitch = 1;
+  utterance.volume = Math.max(0, Math.min(1, volume));
+  const voice = getPreferredVoice();
+  if (voice) utterance.voice = voice;
+  synth.speak(utterance);
+  return true;
+}
+
 export function speakQueueCall(ticket: QueueTicket, container: QueueContainer, volume = 0.9) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return false;
+
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  synth.resume();
   const utterance = new SpeechSynthesisUtterance(`Nomor antrian ${ticket.number}, silakan menuju ${container.name}, layanan ${container.service}.`);
   utterance.lang = 'id-ID';
   utterance.rate = 0.9;
   utterance.pitch = 1;
-  utterance.volume = volume;
-  window.speechSynthesis.speak(utterance);
+  utterance.volume = Math.max(0, Math.min(1, volume));
+  const voice = getPreferredVoice();
+  if (voice) utterance.voice = voice;
+  synth.speak(utterance);
+  return true;
 }

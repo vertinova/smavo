@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
-import QRCode from 'qrcode';
 import {
   BadgeCheck,
   CheckCircle2,
@@ -29,9 +28,9 @@ type QueueTicketImage = {
 
 type DownloadStatus = 'pending' | 'downloaded' | 'failed';
 
-const PPDB_SERVICE = {
-  name: 'PPDB SMAN 2 Cibinong',
-  prefix: 'PPDB',
+const SPMB_SERVICE = {
+  name: 'SPMB SMAN 2 Cibinong',
+  prefix: 'SPMB',
   accent: 'from-indigo-600 to-cyan-600',
   wait: 6,
 };
@@ -61,36 +60,22 @@ function saveDownloadedNumber(number: string) {
   localStorage.setItem(DOWNLOADED_NUMBERS_KEY, JSON.stringify([...numbers].slice(-300)));
 }
 
-function buildBarcodeBits(value: string) {
-  return value
-    .split('')
-    .flatMap((char, index) => {
-      const code = char.charCodeAt(0) + index * 17;
-      return [2 + (code % 3), 1, 1 + (code % 4), 1, 3 + (code % 2), 1];
-    })
-    .slice(0, 78);
-}
-
-function barcodeWidth(width: number) {
-  return Math.max(1, Math.min(4, width));
-}
-
 function makeLocalTicket(visitor: string): QueueTicketImage {
-  const storageKey = `smavo_queue_${PPDB_SERVICE.prefix}`;
+  const storageKey = `smavo_queue_${SPMB_SERVICE.prefix}`;
   const current = Number(localStorage.getItem(storageKey) ?? '0') + 1;
   localStorage.setItem(storageKey, String(current));
 
   const now = new Date();
-  const number = `${PPDB_SERVICE.prefix}-${String(current).padStart(3, '0')}`;
-  const id = `SMAVO-${PPDB_SERVICE.prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(current).padStart(4, '0')}`;
+  const number = `${SPMB_SERVICE.prefix}-${String(current).padStart(3, '0')}`;
+  const id = `SMAVO-${SPMB_SERVICE.prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(current).padStart(4, '0')}`;
 
   return {
     id,
     number,
     visitor,
-    service: PPDB_SERVICE.name,
+    service: SPMB_SERVICE.name,
     status: 'Menunggu',
-    estimate: `${Math.max(PPDB_SERVICE.wait, current * PPDB_SERVICE.wait)} menit`,
+    estimate: `${Math.max(SPMB_SERVICE.wait, current * SPMB_SERVICE.wait)} menit`,
     createdAt: now,
     qrPayload: JSON.stringify({
       system: 'SMAVO Queue',
@@ -98,7 +83,7 @@ function makeLocalTicket(visitor: string): QueueTicketImage {
       id,
       number,
       visitor,
-      service: PPDB_SERVICE.name,
+      service: SPMB_SERVICE.name,
       createdAt: now.toISOString(),
     }),
   };
@@ -134,12 +119,17 @@ function downloadBlob(blob: Blob, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
-function PremiumImageTicket({ ticket, qrDataUrl }: { ticket: QueueTicketImage; qrDataUrl: string }) {
-  const barcode = buildBarcodeBits(ticket.id);
+function displayQueueNumber(number: string) {
+  const suffix = number.split('-').pop() ?? number;
+  return `${SPMB_SERVICE.prefix}-${suffix}`;
+}
+
+function PremiumImageTicket({ ticket }: { ticket: QueueTicketImage }) {
+  const displayNumber = displayQueueNumber(ticket.number);
 
   return (
     <div className="relative w-[430px] overflow-hidden rounded-[28px] bg-slate-950 text-white shadow-2xl shadow-indigo-950/20">
-      <div className={`absolute inset-0 bg-gradient-to-br ${PPDB_SERVICE.accent} opacity-90`} />
+      <div className={`absolute inset-0 bg-gradient-to-br ${SPMB_SERVICE.accent} opacity-90`} />
       <div className="absolute inset-x-0 top-0 h-36 bg-white/15 blur-3xl" />
       <div
         className="absolute inset-0 opacity-[0.14]"
@@ -153,10 +143,10 @@ function PremiumImageTicket({ ticket, qrDataUrl }: { ticket: QueueTicketImage; q
       <div className="relative p-7">
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <img src="/logo-smavo.jpeg" alt="Logo SMAN 2 Cibinong" className="h-12 w-12 rounded-2xl border border-white/30 object-cover shadow-lg" />
+            <img src="/logo-smavo.jpeg" alt="Logo SMAN 2 Cibinong" className="h-14 w-14 shrink-0 rounded-2xl border border-white/30 object-cover shadow-lg" />
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">SMAN 2 Cibinong</p>
-              <h3 className="text-lg font-extrabold leading-tight">Nomor Antrian</h3>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">SMAN 2 Cibinong</p>
+              <h3 className="text-2xl font-extrabold leading-tight">Nomor Antrian</h3>
             </div>
           </div>
           <div className="shrink-0 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-bold backdrop-blur">
@@ -164,40 +154,32 @@ function PremiumImageTicket({ ticket, qrDataUrl }: { ticket: QueueTicketImage; q
           </div>
         </div>
 
-        <div className="mt-8 rounded-[24px] border border-white/20 bg-white/16 p-5 backdrop-blur-md">
-          <p className="break-words text-xs font-semibold uppercase tracking-[0.18em] text-white/65">{ticket.service}</p>
-          <div className="mt-2 flex items-end justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-[5rem] font-black leading-none tracking-normal">{ticket.number.split('-')[1]}</p>
-              <p className="mt-1 text-sm font-bold text-white/80">{ticket.number}</p>
-            </div>
-            <div className="shrink-0 rounded-2xl bg-white p-2 shadow-xl">
-              {qrDataUrl ? <img src={qrDataUrl} alt="QR tiket antrian" className="h-24 w-24" /> : <div className="h-24 w-24 rounded-xl bg-slate-100" />}
-            </div>
+        <div className="mt-8 rounded-[24px] border border-white/20 bg-white/16 p-6 text-center backdrop-blur-md">
+          <p className="break-words text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">{ticket.service}</p>
+          <div className="mt-5">
+            <p className="text-[6.8rem] font-black leading-[0.85] tracking-normal">{displayNumber.split('-')[1]}</p>
+            <p className="mt-5 break-words rounded-2xl bg-white/15 px-4 py-2 text-lg font-black text-white">{displayNumber}</p>
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Calon Peserta</p>
-            <p className="mt-1 truncate font-bold">{ticket.visitor}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Calon Peserta</p>
+            <p className="mt-2 break-words text-base font-bold leading-snug">{ticket.visitor}</p>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Estimasi</p>
-            <p className="mt-1 font-bold">{ticket.estimate}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Estimasi</p>
+            <p className="mt-2 text-base font-bold leading-snug">{ticket.estimate}</p>
           </div>
           <div className="col-span-2 rounded-2xl border border-white/15 bg-white/12 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Waktu Pengambilan</p>
-            <p className="mt-1 font-semibold">{formatTime(ticket.createdAt)}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Waktu Pengambilan</p>
+            <p className="mt-2 break-words text-base font-semibold leading-snug">{formatTime(ticket.createdAt)}</p>
           </div>
         </div>
 
-        <div className="mt-5 flex h-12 items-end gap-[2px] rounded-2xl bg-white px-3 pb-3 pt-2">
-          {barcode.map((width, index) => (
-            <span key={`${width}-${index}`} className="block bg-slate-950" style={{ width: barcodeWidth(width), height: `${18 + ((index * 7) % 18)}px` }} />
-          ))}
-        </div>
-        <p className="mt-3 text-center text-[11px] font-medium text-white/70">Simpan tiket ini dan tunjukkan saat nomor dipanggil.</p>
+        <p className="mt-5 rounded-2xl bg-white/12 px-4 py-3 text-center text-[12px] font-semibold leading-relaxed text-white/78">
+          Simpan tiket ini dan tunjukkan saat nomor dipanggil.
+        </p>
       </div>
     </div>
   );
@@ -212,7 +194,8 @@ function QueueTicketResultModal({
   downloadStatus: DownloadStatus;
   onClose: () => void;
 }) {
-  const queueNumber = ticket.number.split('-')[1] ?? ticket.number;
+  const displayNumber = displayQueueNumber(ticket.number);
+  const queueNumber = displayNumber.split('-')[1] ?? displayNumber;
   const isDownloaded = downloadStatus === 'downloaded';
   const isFailed = downloadStatus === 'failed';
   const isPending = downloadStatus === 'pending';
@@ -227,7 +210,7 @@ function QueueTicketResultModal({
       />
 
       <div className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] bg-white shadow-2xl shadow-slate-950/25">
-        <div className={`absolute inset-x-0 top-0 h-36 bg-gradient-to-br ${PPDB_SERVICE.accent} opacity-95`} />
+        <div className={`absolute inset-x-0 top-0 h-36 bg-gradient-to-br ${SPMB_SERVICE.accent} opacity-95`} />
         <div className="absolute right-[-72px] top-[-72px] h-48 w-48 rounded-full bg-white/20" />
         <div className="absolute left-[-48px] top-24 h-32 w-32 rounded-full bg-cyan-200/30 blur-2xl" />
 
@@ -244,7 +227,7 @@ function QueueTicketResultModal({
           <div className="flex min-w-0 items-center gap-3 pr-10 text-white">
             <img src="/logo-smavo.jpeg" alt="SMAVO" className="h-12 w-12 shrink-0 rounded-2xl border border-white/40 object-cover shadow-lg" />
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-bold uppercase tracking-[0.2em] text-white/75">PPDB SMAVO</p>
+              <p className="truncate text-[11px] font-bold uppercase tracking-[0.2em] text-white/75">SPMB SMAVO</p>
               <h3 className="text-base font-black leading-tight sm:text-lg">Nomor Antrian Berhasil Dibuat</h3>
             </div>
           </div>
@@ -254,7 +237,7 @@ function QueueTicketResultModal({
             <p className="mt-2 break-words text-[4.4rem] font-black leading-none tracking-normal text-slate-950 sm:text-[5rem]">
               {queueNumber}
             </p>
-            <p className="mt-2 break-words text-sm font-black text-indigo-600">{ticket.number}</p>
+            <p className="mt-2 break-words text-sm font-black text-indigo-600">{displayNumber}</p>
 
             <div className="mt-5 grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
               <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
@@ -319,7 +302,6 @@ export default function QueueTicketStudio() {
   const [ticket, setTicket] = useState<QueueTicketImage | null>(null);
   const [modalTicket, setModalTicket] = useState<QueueTicketImage | null>(null);
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('pending');
-  const [qrDataUrl, setQrDataUrl] = useState('');
   const [lastIssued, setLastIssued] = useState<QueueTicketImage | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -328,20 +310,7 @@ export default function QueueTicketStudio() {
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!ticket) return;
-
-    QRCode.toDataURL(ticket.qrPayload, {
-      width: 360,
-      margin: 2,
-      color: { dark: '#0f172a', light: '#ffffff' },
-      errorCorrectionLevel: 'H',
-    })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(''));
-  }, [ticket]);
-
-  useEffect(() => {
-    if (!pendingDownload || !ticket || !qrDataUrl) return;
+    if (!pendingDownload || !ticket) return;
 
     let cancelled = false;
     const timeout = window.setTimeout(async () => {
@@ -360,7 +329,6 @@ export default function QueueTicketStudio() {
           setMessage('Tiket gagal diunduh. Coba tekan tombol sekali lagi.');
           setDownloadStatus('failed');
           setTicket(null);
-          setQrDataUrl('');
           return;
         }
 
@@ -369,13 +337,11 @@ export default function QueueTicketStudio() {
         setLastIssued(ticket);
         setDownloadStatus('downloaded');
         setTicket(null);
-        setQrDataUrl('');
         setMessage(`Nomor ${ticket.number} berhasil dibuat dan tiket PNG sudah diunduh.`);
       } catch {
         if (!cancelled) {
           setDownloadStatus('failed');
           setTicket(null);
-          setQrDataUrl('');
           setMessage('Tiket gagal diunduh. Coba ambil ulang jika file belum masuk ke perangkat.');
         }
       } finally {
@@ -390,7 +356,7 @@ export default function QueueTicketStudio() {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [pendingDownload, qrDataUrl, ticket]);
+  }, [pendingDownload, ticket]);
 
   const generateUniqueTicket = async (name: string) => {
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -450,10 +416,10 @@ export default function QueueTicketStudio() {
         <div className="mb-6 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50 px-4 py-1.5">
             <Ticket size={13} className="text-cyan-600" />
-            <span className="text-xs font-semibold text-cyan-700">Antrian PPDB Digital</span>
+            <span className="text-xs font-semibold text-cyan-700">Antrian SPMB Digital</span>
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-            Ambil nomor antrian PPDB dari ponsel.
+            Ambil nomor antrian SPMB dari ponsel.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
             Isi nama calon peserta, nomor akan tampil di layar dan tiket PNG otomatis terunduh ke perangkat.
@@ -466,7 +432,7 @@ export default function QueueTicketStudio() {
               <Sparkles size={21} />
             </div>
             <div className="min-w-0">
-              <h3 className="font-extrabold text-slate-900">Nomor Antrian PPDB</h3>
+              <h3 className="font-extrabold text-slate-900">Nomor Antrian SPMB</h3>
               <p className="text-xs leading-relaxed text-slate-500">Nomor tampil sebagai pop up, tiket langsung download.</p>
             </div>
           </div>
@@ -490,7 +456,7 @@ export default function QueueTicketStudio() {
               <span className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-500">
                 <BadgeCheck size={13} /> Layanan
               </span>
-              <p className="text-sm font-black text-indigo-900">PPDB SMAN 2 Cibinong</p>
+              <p className="text-sm font-black text-indigo-900">SPMB SMAN 2 Cibinong</p>
             </div>
 
             <button
@@ -537,7 +503,7 @@ export default function QueueTicketStudio() {
       {ticket ? (
         <div className="pointer-events-none fixed left-[-10000px] top-0" aria-hidden="true">
           <div ref={imageRef}>
-            <PremiumImageTicket ticket={ticket} qrDataUrl={qrDataUrl} />
+            <PremiumImageTicket ticket={ticket} />
           </div>
         </div>
       ) : null}
