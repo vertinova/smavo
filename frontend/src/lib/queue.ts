@@ -142,7 +142,7 @@ export function openQueueEventSource(onSnapshot: (snapshot: QueueSnapshot) => vo
   return source;
 }
 
-export type QueueVoiceStyle = 'semangat' | 'formal' | 'singkat';
+export type QueueVoiceStyle = 'bank' | 'semangat' | 'formal' | 'singkat';
 
 export type QueueVoiceOptions = {
   volume?: number;
@@ -152,13 +152,13 @@ export type QueueVoiceOptions = {
 
 function normalizeVoiceOptions(options?: number | QueueVoiceOptions): Required<QueueVoiceOptions> {
   if (typeof options === 'number') {
-    return { volume: options, voiceURI: '', style: 'semangat' };
+    return { volume: options, voiceURI: '', style: 'bank' };
   }
 
   return {
     volume: options?.volume ?? 0.9,
     voiceURI: options?.voiceURI ?? '',
-    style: options?.style ?? 'semangat',
+    style: options?.style ?? 'bank',
   };
 }
 
@@ -173,18 +173,39 @@ function getPreferredVoice(voiceURI = '') {
     ?? voices[0];
 }
 
+function makeSpokenQueueNumber(number: string) {
+  const digitWords: Record<string, string> = {
+    '0': 'nol',
+    '1': 'satu',
+    '2': 'dua',
+    '3': 'tiga',
+    '4': 'empat',
+    '5': 'lima',
+    '6': 'enam',
+    '7': 'tujuh',
+    '8': 'delapan',
+    '9': 'sembilan',
+  };
+  const [rawPrefix, rawSuffix] = formatQueueNumber(number).split('-');
+  const prefix = rawPrefix.split('').join(' ');
+  const suffix = (rawSuffix ?? '').split('').map((digit) => digitWords[digit] ?? digit).join(' ');
+  return suffix ? `${prefix}, ${suffix}` : prefix;
+}
+
 function makeQueueCallText(ticket: QueueTicket, container: QueueContainer, style: QueueVoiceStyle) {
-  const number = formatQueueNumber(ticket.number);
+  const number = makeSpokenQueueNumber(ticket.number);
   const destination = container.name;
 
   if (style === 'singkat') return `Nomor ${number}, ke ${destination}.`;
   if (style === 'formal') return `Nomor antrean ${number}, silakan menuju ${destination}.`;
+  if (style === 'bank') return `Nomor antrean ${number}. Silakan menuju ${destination}.`;
   return `Nomor ${number}, silakan menuju ${destination} sekarang. Semangat!`;
 }
 
 function getVoiceTuning(style: QueueVoiceStyle) {
   if (style === 'singkat') return { rate: 1.08, pitch: 1.02 };
   if (style === 'formal') return { rate: 0.94, pitch: 1 };
+  if (style === 'bank') return { rate: 0.98, pitch: 0.98 };
   return { rate: 1.03, pitch: 1.08 };
 }
 

@@ -66,6 +66,7 @@ const accentOptions = [
 ];
 
 const voiceStyleOptions: { value: QueueVoiceStyle; label: string }[] = [
+  { value: 'bank', label: 'Bank Natural' },
   { value: 'semangat', label: 'Semangat' },
   { value: 'singkat', label: 'Singkat' },
   { value: 'formal', label: 'Formal' },
@@ -472,7 +473,7 @@ export default function QueueDashboardPage() {
   const [volume, setVolume] = useState(0.9);
   const [chartReady, setChartReady] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [voiceStyle, setVoiceStyle] = useState<QueueVoiceStyle>('semangat');
+  const [voiceStyle, setVoiceStyle] = useState<QueueVoiceStyle>('bank');
   const [voiceURI, setVoiceURI] = useState('');
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [settingsBusy, setSettingsBusy] = useState(false);
