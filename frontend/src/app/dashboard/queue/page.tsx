@@ -475,8 +475,6 @@ export default function QueueDashboardPage() {
   const [chartReady, setChartReady] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [voiceStyle, setVoiceStyle] = useState<QueueVoiceStyle>('bank');
-  const [voiceURI, setVoiceURI] = useState('');
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsDirty, setSettingsDirty] = useState(false);
@@ -492,35 +490,15 @@ export default function QueueDashboardPage() {
 
   useEffect(() => {
     const savedStyle = localStorage.getItem('smavo_queue_voice_style') as QueueVoiceStyle | null;
-    const savedVoiceURI = localStorage.getItem('smavo_queue_voice_uri');
     if (savedStyle && voiceStyleOptions.some((option) => option.value === savedStyle)) {
       setVoiceStyle(savedStyle);
     }
-    if (savedVoiceURI) setVoiceURI(savedVoiceURI);
-
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    const loadVoices = () => {
-      setAvailableVoices(window.speechSynthesis.getVoices());
-    };
-
-    loadVoices();
-    window.speechSynthesis.addEventListener?.('voiceschanged', loadVoices);
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      window.speechSynthesis.removeEventListener?.('voiceschanged', loadVoices);
-      if (window.speechSynthesis.onvoiceschanged === loadVoices) {
-        window.speechSynthesis.onvoiceschanged = null;
-      }
-    };
   }, []);
 
   useEffect(() => {
     localStorage.setItem('smavo_queue_voice_style', voiceStyle);
-    if (voiceURI) localStorage.setItem('smavo_queue_voice_uri', voiceURI);
-    else localStorage.removeItem('smavo_queue_voice_uri');
-  }, [voiceStyle, voiceURI]);
+    localStorage.removeItem('smavo_queue_voice_uri');
+  }, [voiceStyle]);
 
   useEffect(() => {
     if (settingsDirty) return;
@@ -558,9 +536,8 @@ export default function QueueDashboardPage() {
 
   const audioOptions = useMemo<QueueVoiceOptions>(() => ({
     volume,
-    voiceURI,
     style: voiceStyle,
-  }), [voiceStyle, voiceURI, volume]);
+  }), [voiceStyle, volume]);
 
   const runAction = async (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => {
     setBusy(true);
@@ -727,21 +704,6 @@ export default function QueueDashboardPage() {
             >
               {voiceStyleOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className={`flex min-w-[220px] items-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
-            Voice
-            <select
-              value={voiceURI}
-              onChange={(event) => setVoiceURI(event.target.value)}
-              className={`min-w-0 flex-1 rounded-xl border px-3 py-2 text-xs font-black outline-none ${ui.input}`}
-            >
-              <option value="">Otomatis Indonesia</option>
-              {availableVoices.map((voice) => (
-                <option key={voice.voiceURI} value={voice.voiceURI}>
-                  {voice.name} ({voice.lang})
-                </option>
               ))}
             </select>
           </label>
