@@ -217,6 +217,7 @@ function ContainerCard({
 }) {
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
+  const isVerificationTicket = formatQueueService(active?.service).toLowerCase().includes('verifikasi');
 
   return (
     <motion.div
@@ -286,7 +287,7 @@ function ContainerCard({
           <RotateCcw className="mx-auto mb-1" size={16} /> Recall
         </button>
         <button disabled={busy || !active} onClick={() => onAction(container.id, 'done')} className="rounded-2xl bg-emerald-400/90 px-3 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.02] disabled:opacity-40">
-          <CheckCircle2 className="mx-auto mb-1" size={16} /> Selesai
+          <CheckCircle2 className="mx-auto mb-1" size={16} /> {isVerificationTicket ? 'Kirim Operator' : 'Selesai'}
         </button>
         <button disabled={busy || !active} onClick={() => onAction(container.id, 'skip')} className="rounded-2xl bg-rose-400/90 px-3 py-3 text-xs font-black text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] disabled:opacity-40">
           <SkipForward className="mx-auto mb-1" size={16} /> Lewati
@@ -548,6 +549,13 @@ export default function QueueDashboardPage() {
     [selectedContainer?.id, snapshot.containers]
   );
 
+  const operatorData = useMemo(
+    () => snapshot.tickets
+      .filter((ticket) => ticket.status === 'DONE' && formatQueueService(ticket.service).toLowerCase().includes('verifikasi'))
+      .slice(0, 10),
+    [snapshot.tickets]
+  );
+
   const audioOptions = useMemo<QueueVoiceOptions>(() => ({
     volume,
     voiceURI,
@@ -622,9 +630,9 @@ export default function QueueDashboardPage() {
       setSnapshot(result.snapshot);
       setContainerDraft(result.snapshot.containers.map(toContainerConfig));
       setSettingsDirty(false);
-      setSettingsMessage('Konfigurasi operator berhasil disimpan.');
+      setSettingsMessage('Konfigurasi loket berhasil disimpan.');
     } catch (error: any) {
-      setSettingsMessage(error.response?.data?.message || 'Konfigurasi operator gagal disimpan.');
+      setSettingsMessage(error.response?.data?.message || 'Konfigurasi loket gagal disimpan.');
     } finally {
       setSettingsBusy(false);
     }
@@ -764,8 +772,8 @@ export default function QueueDashboardPage() {
       <div className={`relative mt-6 rounded-3xl border p-4 shadow-xl backdrop-blur-xl ${ui.panel}`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className={`text-lg font-black ${ui.text}`}>Pilih Container</h2>
-            <p className={`mt-1 text-xs ${ui.muted}`}>Pilih satu operator untuk dipakai memanggil antrean. Container lain tetap dipantau di panel terpisah.</p>
+            <h2 className={`text-lg font-black ${ui.text}`}>Pilih Loket</h2>
+            <p className={`mt-1 text-xs ${ui.muted}`}>Pilih loket verifikator atau informasi untuk memanggil antrean. Operator cukup menerima data hasil verifikasi.</p>
           </div>
           <select
             value={selectedContainer?.id ?? ''}
@@ -874,6 +882,47 @@ export default function QueueDashboardPage() {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : null}
+            </div>
+          </div>
+
+          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Data Operator</h2>
+                <p className={`mt-1 text-xs ${ui.muted}`}>Data user SPMB yang sudah selesai di verifikator.</p>
+              </div>
+              <span className="rounded-full bg-emerald-300 px-3 py-1 text-[10px] font-black text-slate-950">
+                {operatorData.length} data
+              </span>
+            </div>
+            <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+              {operatorData.length ? operatorData.map((ticket) => (
+                <div key={ticket.id} className={`rounded-2xl border px-4 py-3 ${ui.subPanel}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={`font-black ${ui.text}`}>{formatQueueNumber(ticket.number)}</p>
+                      <p className={`mt-1 truncate text-sm font-bold ${ui.text}`}>{ticket.visitorName}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-400/15 text-emerald-200'}`}>
+                      Siap Operator
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div className={`rounded-xl px-3 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
+                      <p className={`font-black uppercase tracking-[0.14em] ${ui.faint}`}>Asal Sekolah</p>
+                      <p className={`mt-1 font-bold ${ui.text}`}>{ticket.originSchool || '-'}</p>
+                    </div>
+                    <div className={`rounded-xl px-3 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
+                      <p className={`font-black uppercase tracking-[0.14em] ${ui.faint}`}>Jalur</p>
+                      <p className={`mt-1 font-bold ${ui.text}`}>{ticket.registrationPath || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div className={`rounded-2xl border px-4 py-6 text-center text-sm font-bold ${ui.subPanel} ${ui.muted}`}>
+                  Belum ada data verifikasi yang dikirim ke operator.
+                </div>
+              )}
             </div>
           </div>
 

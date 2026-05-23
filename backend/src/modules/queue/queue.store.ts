@@ -482,7 +482,9 @@ export function completeTicket(containerId: string) {
     type: 'DONE',
     ticketNumber: completed.number,
     containerId,
-    message: `${completed.number} selesai dilayani di ${container.name}`,
+    message: normalizeService(completed.service) === normalizeService(QUEUE_SERVICES.verification)
+      ? `${completed.number} selesai verifikasi, data diteruskan ke operator`
+      : `${completed.number} selesai dilayani di ${container.name}`,
   });
   persistQueueState();
   return completed;

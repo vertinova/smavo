@@ -44,7 +44,7 @@ const SERVICE_CONFIG: Record<string, { name: string; prefix: string; accent: str
     prefix: 'SPMB',
     accent: 'from-indigo-600 to-cyan-600',
     wait: 6,
-    flow: 'Menunggu dipanggil, menuju verifikator sesuai nomor, lalu selesai.',
+    flow: 'Menunggu dipanggil, menuju verifikator, lalu data diteruskan ke operator.',
   },
   'Informasi': {
     name: 'Informasi SMAN 2 Cibinong',
