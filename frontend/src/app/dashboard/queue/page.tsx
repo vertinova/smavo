@@ -43,6 +43,8 @@ import {
   type QueueContainer,
   type QueueContainerConfig,
   type QueueTicket,
+  type QueueVoiceOptions,
+  type QueueVoiceStyle,
 } from '@/lib/queue';
 import { useQueueStore } from '@/lib/queueStore';
 import { useTheme } from '@/lib/theme';
@@ -63,6 +65,12 @@ const accentOptions = [
   { value: 'rose', label: 'Rose' },
 ];
 
+const voiceStyleOptions: { value: QueueVoiceStyle; label: string }[] = [
+  { value: 'semangat', label: 'Semangat' },
+  { value: 'singkat', label: 'Singkat' },
+  { value: 'formal', label: 'Formal' },
+];
+
 function toContainerConfig(container: QueueContainer): QueueContainerConfig {
   return {
     id: container.id,
@@ -80,8 +88,8 @@ function makeNewContainer(index: number): QueueContainerConfig {
   return {
     id: `verifikator-${number}`,
     name: `Verifikator ${number}`,
-    service: 'VERIFIKASI SPMB',
-    code: 'V',
+    service: 'Verifikasi Berkas',
+    code: 'SPMB',
     operator: `Verifikator ${number}`,
     isPaused: false,
     accent: accentOptions[index % accentOptions.length].value,
@@ -208,8 +216,6 @@ function ContainerCard({
 }) {
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
-  const activeService = active?.service?.toUpperCase() ?? '';
-  const isVerificationStep = activeService === 'VERIFIKASI SPMB';
 
   return (
     <motion.div
@@ -279,7 +285,7 @@ function ContainerCard({
           <RotateCcw className="mx-auto mb-1" size={16} /> Recall
         </button>
         <button disabled={busy || !active} onClick={() => onAction(container.id, 'done')} className="rounded-2xl bg-emerald-400/90 px-3 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.02] disabled:opacity-40">
-          <CheckCircle2 className="mx-auto mb-1" size={16} /> {isVerificationStep ? 'Ke Operator' : 'Selesai'}
+          <CheckCircle2 className="mx-auto mb-1" size={16} /> Selesai
         </button>
         <button disabled={busy || !active} onClick={() => onAction(container.id, 'skip')} className="rounded-2xl bg-rose-400/90 px-3 py-3 text-xs font-black text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] disabled:opacity-40">
           <SkipForward className="mx-auto mb-1" size={16} /> Lewati
@@ -332,7 +338,7 @@ function ContainerSettingsPanel({
             Ubah jumlah loket, nama loket, layanan, kode nomor, petugas, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
           </p>
           <p className={`mt-2 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Flow utama: Verifikasi SPMB dipanggil ke verifikator, setelah selesai otomatis masuk antrean Operator SPMB. Layanan Informasi selesai di meja informasi.
+            Samakan kolom layanan dengan loket di lapangan: Verifikasi Berkas untuk verifikator dan Informasi untuk meja informasi. Kode nomor antrean memakai SPMB.
           </p>
         </div>
 
@@ -397,7 +403,7 @@ function ContainerSettingsPanel({
                   value={container.service}
                   onChange={(event) => onChange(index, { service: event.target.value })}
                   className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="VERIFIKASI SPMB"
+                  placeholder="Verifikasi Berkas"
                 />
               </label>
 
@@ -408,7 +414,7 @@ function ContainerSettingsPanel({
                   maxLength={8}
                   onChange={(event) => onChange(index, { code: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })}
                   className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black uppercase outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="V"
+                  placeholder="SPMB"
                 />
               </label>
 
@@ -466,6 +472,9 @@ export default function QueueDashboardPage() {
   const [volume, setVolume] = useState(0.9);
   const [chartReady, setChartReady] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [voiceStyle, setVoiceStyle] = useState<QueueVoiceStyle>('semangat');
+  const [voiceURI, setVoiceURI] = useState('');
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsDirty, setSettingsDirty] = useState(false);
@@ -478,6 +487,38 @@ export default function QueueDashboardPage() {
     refresh().catch(() => {});
     return connect();
   }, [connect, refresh]);
+
+  useEffect(() => {
+    const savedStyle = localStorage.getItem('smavo_queue_voice_style') as QueueVoiceStyle | null;
+    const savedVoiceURI = localStorage.getItem('smavo_queue_voice_uri');
+    if (savedStyle && voiceStyleOptions.some((option) => option.value === savedStyle)) {
+      setVoiceStyle(savedStyle);
+    }
+    if (savedVoiceURI) setVoiceURI(savedVoiceURI);
+
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const loadVoices = () => {
+      setAvailableVoices(window.speechSynthesis.getVoices());
+    };
+
+    loadVoices();
+    window.speechSynthesis.addEventListener?.('voiceschanged', loadVoices);
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      window.speechSynthesis.removeEventListener?.('voiceschanged', loadVoices);
+      if (window.speechSynthesis.onvoiceschanged === loadVoices) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('smavo_queue_voice_style', voiceStyle);
+    if (voiceURI) localStorage.setItem('smavo_queue_voice_uri', voiceURI);
+    else localStorage.removeItem('smavo_queue_voice_uri');
+  }, [voiceStyle, voiceURI]);
 
   useEffect(() => {
     if (settingsDirty) return;
@@ -506,13 +547,19 @@ export default function QueueDashboardPage() {
     [selectedContainer?.id, snapshot.containers]
   );
 
+  const audioOptions = useMemo<QueueVoiceOptions>(() => ({
+    volume,
+    voiceURI,
+    style: voiceStyle,
+  }), [voiceStyle, voiceURI, volume]);
+
   const runAction = async (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => {
     setBusy(true);
     try {
       const result = await queueAction(containerId, action);
       const container = result.snapshot.containers.find((item) => item.id === containerId);
       if (container?.activeTicket && ['call', 'next', 'recall'].includes(action)) {
-        speakQueueCall(container.activeTicket, container, volume);
+        speakQueueCall(container.activeTicket, container, audioOptions);
       }
       await refresh();
     } finally {
@@ -531,7 +578,7 @@ export default function QueueDashboardPage() {
   };
 
   const enableAudio = () => {
-    setAudioEnabled(unlockQueueAudio(volume));
+    setAudioEnabled(unlockQueueAudio(audioOptions));
   };
 
   const changeContainerDraft = (index: number, patch: Partial<QueueContainerConfig>) => {
@@ -567,8 +614,8 @@ export default function QueueDashboardPage() {
       const result = await updateQueueContainers(containerDraft.map((container, index) => ({
         ...container,
         name: container.name.trim() || `Verifikator ${index + 1}`,
-        service: container.service.trim() || 'VERIFIKASI SPMB',
-        code: container.code.trim() || 'V',
+        service: container.service.trim() || 'Verifikasi Berkas',
+        code: container.code.trim() || 'SPMB',
         operator: container.operator.trim() || `Verifikator ${index + 1}`,
       })));
       setSnapshot(result.snapshot);
@@ -617,7 +664,7 @@ export default function QueueDashboardPage() {
           </div>
           <h1 className={`text-3xl font-black tracking-tight lg:text-5xl ${ui.text}`}>Command Center Antrean</h1>
           <p className={`mt-2 max-w-2xl text-sm ${ui.muted}`}>
-            Dashboard petugas untuk memanggil dan memonitor alur Verifikasi SPMB, Operator SPMB, dan Layanan Informasi secara realtime.
+            Dashboard petugas untuk memanggil dan memonitor layanan Verifikasi Berkas dan Informasi secara realtime.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -661,6 +708,33 @@ export default function QueueDashboardPage() {
           <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
             <Volume2 size={16} />
             <input type="range" min="0" max="1" step="0.1" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="w-24 accent-cyan-300" />
+          </label>
+          <label className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
+            Gaya
+            <select
+              value={voiceStyle}
+              onChange={(event) => setVoiceStyle(event.target.value as QueueVoiceStyle)}
+              className={`rounded-xl border px-3 py-2 text-xs font-black outline-none ${ui.input}`}
+            >
+              {voiceStyleOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className={`flex min-w-[220px] items-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
+            Voice
+            <select
+              value={voiceURI}
+              onChange={(event) => setVoiceURI(event.target.value)}
+              className={`min-w-0 flex-1 rounded-xl border px-3 py-2 text-xs font-black outline-none ${ui.input}`}
+            >
+              <option value="">Otomatis Indonesia</option>
+              {availableVoices.map((voice) => (
+                <option key={voice.voiceURI} value={voice.voiceURI}>
+                  {voice.name} ({voice.lang})
+                </option>
+              ))}
+            </select>
           </label>
         </div>
       </div>
@@ -735,7 +809,7 @@ export default function QueueDashboardPage() {
               busy={busy}
               onAction={runAction}
               onPause={runPause}
-              onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, volume)}
+              onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
             />
           ) : null}
 

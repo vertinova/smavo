@@ -142,44 +142,86 @@ export function openQueueEventSource(onSnapshot: (snapshot: QueueSnapshot) => vo
   return source;
 }
 
-function getPreferredVoice() {
+export type QueueVoiceStyle = 'semangat' | 'formal' | 'singkat';
+
+export type QueueVoiceOptions = {
+  volume?: number;
+  voiceURI?: string;
+  style?: QueueVoiceStyle;
+};
+
+function normalizeVoiceOptions(options?: number | QueueVoiceOptions): Required<QueueVoiceOptions> {
+  if (typeof options === 'number') {
+    return { volume: options, voiceURI: '', style: 'semangat' };
+  }
+
+  return {
+    volume: options?.volume ?? 0.9,
+    voiceURI: options?.voiceURI ?? '',
+    style: options?.style ?? 'semangat',
+  };
+}
+
+function getPreferredVoice(voiceURI = '') {
   const voices = window.speechSynthesis.getVoices();
+  const selected = voices.find((voice) => voice.voiceURI === voiceURI);
+  if (selected) return selected;
+
   return voices.find((voice) => voice.lang.toLowerCase().startsWith('id'))
     ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('ms'))
     ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('en'))
     ?? voices[0];
 }
 
-export function unlockQueueAudio(volume = 0.5) {
+function makeQueueCallText(ticket: QueueTicket, container: QueueContainer, style: QueueVoiceStyle) {
+  const number = formatQueueNumber(ticket.number);
+  const destination = container.name;
+
+  if (style === 'singkat') return `Nomor ${number}, ke ${destination}.`;
+  if (style === 'formal') return `Nomor antrean ${number}, silakan menuju ${destination}.`;
+  return `Nomor ${number}, silakan menuju ${destination} sekarang. Semangat!`;
+}
+
+function getVoiceTuning(style: QueueVoiceStyle) {
+  if (style === 'singkat') return { rate: 1.08, pitch: 1.02 };
+  if (style === 'formal') return { rate: 0.94, pitch: 1 };
+  return { rate: 1.03, pitch: 1.08 };
+}
+
+export function unlockQueueAudio(options: number | QueueVoiceOptions = 0.5) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return false;
 
+  const config = normalizeVoiceOptions(options);
+  const tuning = getVoiceTuning(config.style);
   const synth = window.speechSynthesis;
   synth.cancel();
   synth.resume();
 
-  const utterance = new SpeechSynthesisUtterance('Suara antrean aktif.');
+  const utterance = new SpeechSynthesisUtterance(config.style === 'semangat' ? 'Suara antrean aktif. Siap memanggil!' : 'Suara antrean aktif.');
   utterance.lang = 'id-ID';
-  utterance.rate = 0.72;
-  utterance.pitch = 1;
-  utterance.volume = Math.max(0, Math.min(1, volume));
-  const voice = getPreferredVoice();
+  utterance.rate = tuning.rate;
+  utterance.pitch = tuning.pitch;
+  utterance.volume = Math.max(0, Math.min(1, config.volume));
+  const voice = getPreferredVoice(config.voiceURI);
   if (voice) utterance.voice = voice;
   synth.speak(utterance);
   return true;
 }
 
-export function speakQueueCall(ticket: QueueTicket, container: QueueContainer, volume = 0.9) {
+export function speakQueueCall(ticket: QueueTicket, container: QueueContainer, options: number | QueueVoiceOptions = 0.9) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return false;
 
+  const config = normalizeVoiceOptions(options);
+  const tuning = getVoiceTuning(config.style);
   const synth = window.speechSynthesis;
   synth.cancel();
   synth.resume();
-  const utterance = new SpeechSynthesisUtterance(`Nomor antrean ${formatQueueNumber(ticket.number)}, silakan menuju ${container.name}, layanan ${formatQueueService(container.service)}.`);
+  const utterance = new SpeechSynthesisUtterance(makeQueueCallText(ticket, container, config.style));
   utterance.lang = 'id-ID';
-  utterance.rate = 0.72;
-  utterance.pitch = 1;
-  utterance.volume = Math.max(0, Math.min(1, volume));
-  const voice = getPreferredVoice();
+  utterance.rate = tuning.rate;
+  utterance.pitch = tuning.pitch;
+  utterance.volume = Math.max(0, Math.min(1, config.volume));
+  const voice = getPreferredVoice(config.voiceURI);
   if (voice) utterance.voice = voice;
   synth.speak(utterance);
   return true;

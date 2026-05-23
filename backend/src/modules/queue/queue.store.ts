@@ -88,16 +88,17 @@ type PersistedQueueState = {
 const accents = ['cyan', 'violet', 'emerald', 'amber', 'rose'];
 const queueStateFile = process.env.QUEUE_STATE_FILE || path.join(process.cwd(), 'data', 'queue-state.json');
 const QUEUE_SERVICES = {
-  verification: 'VERIFIKASI SPMB',
-  operator: 'OPERATOR SPMB',
-  information: 'INFORMASI',
+  verification: 'Verifikasi Berkas',
+  information: 'Informasi',
 };
 
 let containers: QueueContainer[] = [
-  { id: 'verifikator-1', name: 'Verifikator 1', service: QUEUE_SERVICES.verification, code: 'V', operator: 'Verifikator 1', isPaused: false, accent: 'cyan' },
-  { id: 'verifikator-2', name: 'Verifikator 2', service: QUEUE_SERVICES.verification, code: 'V', operator: 'Verifikator 2', isPaused: false, accent: 'violet' },
-  { id: 'operator-1', name: 'Operator SPMB', service: QUEUE_SERVICES.operator, code: 'OP', operator: 'Operator SPMB', isPaused: false, accent: 'emerald' },
-  { id: 'informasi-1', name: 'Meja Informasi', service: QUEUE_SERVICES.information, code: 'I', operator: 'Petugas Informasi', isPaused: false, accent: 'amber' },
+  { id: 'verifikator-1', name: 'Verifikator 1', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Dra. Kristiana, M.Pd.', isPaused: false, accent: 'cyan' },
+  { id: 'verifikator-2', name: 'Verifikator 2', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Artanti, S.Si.', isPaused: false, accent: 'violet' },
+  { id: 'verifikator-3', name: 'Verifikator 3', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Mariyana Septi Nugraheni, S.Pd.', isPaused: false, accent: 'emerald' },
+  { id: 'verifikator-4', name: 'Verifikator 4', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Rizki, S.Pd.', isPaused: false, accent: 'amber' },
+  { id: 'verifikator-5', name: 'Verifikator 5', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Fatasya Kamal, S.Pd.', isPaused: false, accent: 'rose' },
+  { id: 'informasi-1', name: 'INFORMASI', service: QUEUE_SERVICES.information, code: 'SPMB', operator: 'Dra. Sumitri, M.Pd.', isPaused: false, accent: 'cyan' },
 ];
 
 let tickets: QueueTicket[] = [];
@@ -141,50 +142,54 @@ function persistQueueState() {
 loadQueueState();
 
 function ensureFlowContainers() {
-  const hasVerification = containers.some((container) => normalizeService(container.service) === QUEUE_SERVICES.verification);
-  const hasOperator = containers.some((container) => normalizeService(container.service) === QUEUE_SERVICES.operator);
-  const hasInformation = containers.some((container) => normalizeService(container.service) === QUEUE_SERVICES.information);
+  const verificationService = normalizeService(QUEUE_SERVICES.verification);
+  const informationService = normalizeService(QUEUE_SERVICES.information);
+  const hasVerification = containers.some((container) => normalizeService(container.service) === verificationService);
+  const hasInformation = containers.some((container) => normalizeService(container.service) === informationService);
 
-  if (hasVerification && hasOperator && hasInformation) return;
+  if (hasVerification && hasInformation) return;
 
-  const legacySpmb = containers.filter((container) => normalizeService(container.service) === 'SPMB');
+  const legacyVerificationServices = ['SPMB', 'VERIFIKASI SPMB', 'VERIFIKASI BERKAS'];
+  const legacyInfoServices = ['INFORMASI', 'LAYANAN INFORMASI', 'INFORMASI SPMB'];
+  const legacyOperatorServices = ['OPERATOR SPMB'];
+  const legacySpmb = containers.filter((container) => legacyVerificationServices.includes(normalizeService(container.service)));
   const defaultVerificationContainers = [
-    { id: 'verifikator-1', name: 'Verifikator 1', service: QUEUE_SERVICES.verification, code: 'V', operator: 'Verifikator 1', isPaused: false, accent: 'cyan' },
-    { id: 'verifikator-2', name: 'Verifikator 2', service: QUEUE_SERVICES.verification, code: 'V', operator: 'Verifikator 2', isPaused: false, accent: 'violet' },
+    { id: 'verifikator-1', name: 'Verifikator 1', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Dra. Kristiana, M.Pd.', isPaused: false, accent: 'cyan' },
+    { id: 'verifikator-2', name: 'Verifikator 2', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Artanti, S.Si.', isPaused: false, accent: 'violet' },
+    { id: 'verifikator-3', name: 'Verifikator 3', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Mariyana Septi Nugraheni, S.Pd.', isPaused: false, accent: 'emerald' },
+    { id: 'verifikator-4', name: 'Verifikator 4', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Rizki, S.Pd.', isPaused: false, accent: 'amber' },
+    { id: 'verifikator-5', name: 'Verifikator 5', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Fatasya Kamal, S.Pd.', isPaused: false, accent: 'rose' },
   ];
   containers = [
     ...(hasVerification
-      ? containers.filter((container) => normalizeService(container.service) === QUEUE_SERVICES.verification)
-      : (legacySpmb.length ? legacySpmb.slice(0, 2).map((container, index) => ({
+      ? containers.filter((container) => normalizeService(container.service) === verificationService)
+      : (legacySpmb.length ? legacySpmb.slice(0, 5).map((container, index) => ({
         ...container,
         id: container.id || `verifikator-${index + 1}`,
         name: container.name?.replace(/operator/gi, 'Verifikator') || `Verifikator ${index + 1}`,
         service: QUEUE_SERVICES.verification,
-        code: 'V',
+        code: 'SPMB',
         operator: container.operator?.replace(/operator/gi, 'Verifikator') || `Verifikator ${index + 1}`,
         accent: accents[index % accents.length],
       })) : defaultVerificationContainers)),
-    ...(hasOperator ? containers.filter((container) => normalizeService(container.service) === QUEUE_SERVICES.operator) : [{
-      id: 'operator-1',
-      name: 'Operator SPMB',
-      service: QUEUE_SERVICES.operator,
-      code: 'OP',
-      operator: 'Operator SPMB',
-      isPaused: false,
-      accent: 'emerald',
-    }]),
-    ...(hasInformation ? containers.filter((container) => normalizeService(container.service) === QUEUE_SERVICES.information) : [{
+    ...(hasInformation ? containers.filter((container) => normalizeService(container.service) === informationService) : [{
       id: 'informasi-1',
-      name: 'Meja Informasi',
+      name: 'INFORMASI',
       service: QUEUE_SERVICES.information,
-      code: 'I',
-      operator: 'Petugas Informasi',
+      code: 'SPMB',
+      operator: 'Dra. Sumitri, M.Pd.',
       isPaused: false,
-      accent: 'amber',
+      accent: 'cyan',
     }]),
     ...containers.filter((container) => {
       const service = normalizeService(container.service);
-      return !['SPMB', QUEUE_SERVICES.verification, QUEUE_SERVICES.operator, QUEUE_SERVICES.information].includes(service);
+      return ![
+        ...legacyVerificationServices,
+        ...legacyInfoServices,
+        ...legacyOperatorServices,
+        normalizeService(QUEUE_SERVICES.verification),
+        normalizeService(QUEUE_SERVICES.information),
+      ].includes(service);
     }),
   ];
 }
@@ -371,7 +376,7 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
     usedIds.add(id);
 
     const existing = containers.find((container) => container.id === id);
-    const fallbackCode = `C${index + 1}`;
+    const fallbackCode = 'SPMB';
     const code = normalizeCode(input.code, fallbackCode);
 
     return {
@@ -469,27 +474,6 @@ export function completeTicket(containerId: string) {
   const container = containers.find((item) => item.id === containerId);
   const active = activeFor(containerId);
   if (!container || !active) return null;
-
-  if (normalizeService(active.service) === QUEUE_SERVICES.verification) {
-    const operatorContainer = getFirstContainerForService(QUEUE_SERVICES.operator);
-    if (!operatorContainer) return null;
-
-    const moved = updateTicket(active.id, {
-      status: 'WAITING',
-      service: QUEUE_SERVICES.operator,
-      containerId: operatorContainer.id,
-      calledAt: undefined,
-      estimatedWaitMinutes: Math.max(4, waitingFor(operatorContainer.id).length * 4),
-    });
-    addEvent({
-      type: 'DONE',
-      ticketNumber: moved?.number,
-      containerId,
-      message: `${moved?.number} selesai verifikasi, lanjut ke ${operatorContainer.name}`,
-    });
-    persistQueueState();
-    return moved;
-  }
 
   const completed = finishActiveTicket(containerId);
   if (!completed) return null;

@@ -39,19 +39,19 @@ type QueueTicketForm = {
 };
 
 const SERVICE_CONFIG: Record<string, { name: string; prefix: string; accent: string; wait: number; flow: string }> = {
-  'Verifikasi SPMB': {
-    name: 'Verifikasi SPMB SMAN 2 Cibinong',
-    prefix: 'V',
+  'Verifikasi Berkas': {
+    name: 'Verifikasi Berkas SMAN 2 Cibinong',
+    prefix: 'SPMB',
     accent: 'from-indigo-600 to-cyan-600',
     wait: 6,
-    flow: 'Menunggu dipanggil, menuju verifikator, lanjut ke operator, lalu selesai.',
+    flow: 'Menunggu dipanggil, menuju verifikator sesuai nomor, lalu selesai.',
   },
-  'Layanan Informasi': {
-    name: 'Layanan Informasi SMAN 2 Cibinong',
-    prefix: 'I',
+  'Informasi': {
+    name: 'Informasi SMAN 2 Cibinong',
+    prefix: 'SPMB',
     accent: 'from-amber-500 to-cyan-600',
     wait: 4,
-    flow: 'Menunggu dipanggil, menuju meja informasi, lalu selesai.',
+    flow: 'Menunggu dipanggil, menuju layanan informasi, lalu selesai.',
   },
 };
 
@@ -64,8 +64,8 @@ const registrationPathOptions = [
 ];
 
 const serviceChoiceOptions = [
-  'Verifikasi SPMB',
-  'Layanan Informasi',
+  'Verifikasi Berkas',
+  'Informasi',
 ];
 
 const DOWNLOADED_NUMBERS_KEY = 'smavo_downloaded_queue_numbers';
@@ -98,8 +98,8 @@ function formatQueueLabel(value?: string | null) {
 }
 
 function getServiceConfig(serviceChoice: string) {
-  if (/informasi/i.test(serviceChoice)) return SERVICE_CONFIG['Layanan Informasi'];
-  return SERVICE_CONFIG[serviceChoice] ?? SERVICE_CONFIG['Verifikasi SPMB'];
+  if (/informasi/i.test(serviceChoice)) return SERVICE_CONFIG.Informasi;
+  return SERVICE_CONFIG[serviceChoice] ?? SERVICE_CONFIG['Verifikasi Berkas'];
 }
 
 function makeLocalTicket(form: QueueTicketForm): QueueTicketImage {
@@ -519,7 +519,7 @@ export default function QueueTicketStudio() {
             Ambil nomor antrean layanan dari ponsel.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
-            Pilih Verifikasi SPMB atau Layanan Informasi, lalu nomor akan tampil dan tiket PNG otomatis terunduh.
+            Pilih Verifikasi Berkas atau Informasi, lalu nomor akan tampil dan tiket PNG otomatis terunduh.
           </p>
         </div>
 
@@ -628,7 +628,7 @@ export default function QueueTicketStudio() {
           <div className="mt-5 flex items-start gap-3 rounded-2xl bg-slate-950 px-4 py-4 text-white">
             <ShieldCheck size={18} className="mt-0.5 shrink-0 text-cyan-300" />
             <p className="text-xs leading-relaxed text-slate-300">
-              Verifikasi SPMB berjalan melalui verifikator lalu operator. Layanan Informasi selesai di meja informasi.
+              Layanan tersedia: Verifikasi Berkas dan Informasi sesuai loket yang tampil di dashboard.
             </p>
           </div>
         </div>
