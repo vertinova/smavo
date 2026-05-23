@@ -193,6 +193,33 @@ function StatCard({ label, value, icon: Icon, hint, ui }: { label: string; value
   );
 }
 
+function WorkflowGuide({ ui }: { ui: QueueThemeClasses }) {
+  const steps = [
+    { title: 'Ambil Nomor', desc: 'User memilih Verifikasi Berkas atau Informasi dari halaman antrean.', icon: UsersRound },
+    { title: 'Panggil Loket', desc: 'Petugas memilih loket lalu menekan tombol panggil berikutnya.', icon: Megaphone },
+    { title: 'Kirim / Selesai', desc: 'Verifikasi dikirim ke operator. Informasi langsung selesai.', icon: CheckCircle2 },
+  ];
+
+  return (
+    <div className={`relative mt-6 rounded-3xl border p-4 shadow-xl backdrop-blur-xl ${ui.panel}`}>
+      <div className="grid gap-3 md:grid-cols-3">
+        {steps.map((step, index) => (
+          <div key={step.title} className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${ui.subPanel}`}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950">
+              <step.icon size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Langkah {index + 1}</p>
+              <p className={`mt-0.5 text-sm font-black ${ui.text}`}>{step.title}</p>
+              <p className={`mt-0.5 text-xs leading-relaxed ${ui.muted}`}>{step.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DetailRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="min-w-0 rounded-2xl bg-black/20 p-3 ring-1 ring-white/10">
@@ -218,6 +245,8 @@ function ContainerCard({
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
   const isVerificationTicket = formatQueueService(active?.service).toLowerCase().includes('verifikasi');
+  const hasWaiting = container.waitingCount > 0;
+  const finishLabel = isVerificationTicket ? 'Kirim ke Operator' : 'Selesaikan Layanan';
 
   return (
     <motion.div
@@ -242,15 +271,26 @@ function ContainerCard({
       </div>
 
       <div className="relative mt-6 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Nomor Aktif</p>
-        <motion.p
-          key={active?.number ?? 'empty'}
-          initial={{ scale: 0.92, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className={`mt-2 text-5xl font-black leading-none tracking-normal ${active ? 'text-white drop-shadow-[0_0_22px_rgba(34,211,238,0.45)]' : 'text-slate-600'}`}
-        >
-          {active ? formatQueueNumber(active.number) : '---'}
-        </motion.p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Nomor Aktif</p>
+            <motion.p
+              key={active?.number ?? 'empty'}
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`mt-2 text-5xl font-black leading-none tracking-normal ${active ? 'text-white drop-shadow-[0_0_22px_rgba(34,211,238,0.45)]' : 'text-slate-600'}`}
+            >
+              {active ? formatQueueNumber(active.number) : '---'}
+            </motion.p>
+          </div>
+          <div className="rounded-2xl bg-black/20 px-4 py-3 ring-1 ring-white/10">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Aksi Utama</p>
+            <p className="mt-1 max-w-[220px] text-sm font-bold leading-snug text-white">
+              {active ? finishLabel : hasWaiting ? 'Panggil nomor berikutnya.' : 'Belum ada antrean menunggu.'}
+            </p>
+          </div>
+        </div>
+
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-2xl bg-black/20 p-3">
             <p className="text-lg font-black text-white">{container.waitingCount}</p>
@@ -274,31 +314,34 @@ function ContainerCard({
         </div>
       </div>
 
-      <div className="relative mt-4 grid grid-cols-3 gap-2">
+      <div className="relative mt-4 grid gap-2 md:grid-cols-2">
         <button
-          disabled={busy || container.isPaused || Boolean(active)}
+          disabled={busy || container.isPaused || Boolean(active) || !hasWaiting}
           onClick={() => onAction(container.id, 'call')}
           title={active ? 'Selesaikan nomor aktif dulu sebelum memanggil nomor berikutnya' : 'Panggil nomor berikutnya'}
-          className="rounded-2xl bg-cyan-400 px-3 py-3 text-xs font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02] disabled:opacity-40"
+          className="flex min-h-[68px] items-center justify-center gap-3 rounded-2xl bg-cyan-400 px-4 py-4 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] disabled:opacity-40"
         >
-          <SkipForward className="mx-auto mb-1" size={16} /> {active ? 'Tunggu' : 'Next'}
+          <SkipForward size={18} /> {active ? 'Nomor Masih Aktif' : hasWaiting ? 'Panggil Berikutnya' : 'Antrean Kosong'}
         </button>
-        <button disabled={busy || !active} onClick={() => onAction(container.id, 'recall')} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
-          <RotateCcw className="mx-auto mb-1" size={16} /> Recall
+        <button disabled={busy || !active} onClick={() => onAction(container.id, 'done')} className="flex min-h-[68px] items-center justify-center gap-3 rounded-2xl bg-emerald-400/90 px-4 py-4 text-sm font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.01] disabled:opacity-40">
+          <CheckCircle2 size={18} /> {finishLabel}
         </button>
-        <button disabled={busy || !active} onClick={() => onAction(container.id, 'done')} className="rounded-2xl bg-emerald-400/90 px-3 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.02] disabled:opacity-40">
-          <CheckCircle2 className="mx-auto mb-1" size={16} /> {isVerificationTicket ? 'Kirim Operator' : 'Selesai'}
-        </button>
-        <button disabled={busy || !active} onClick={() => onAction(container.id, 'skip')} className="rounded-2xl bg-rose-400/90 px-3 py-3 text-xs font-black text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] disabled:opacity-40">
-          <SkipForward className="mx-auto mb-1" size={16} /> Lewati
-        </button>
-        <button disabled={busy || !active} onClick={() => onSpeak(container)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
-          <Volume2 className="mx-auto mb-1" size={16} /> Audio
-        </button>
-        <button disabled={busy} onClick={() => onPause(container.id, !container.isPaused)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
-          {container.isPaused ? <Play className="mx-auto mb-1" size={16} /> : <Pause className="mx-auto mb-1" size={16} />}
-          {container.isPaused ? 'Aktif' : 'Pause'}
-        </button>
+
+        <div className="grid grid-cols-2 gap-2 md:col-span-2 lg:grid-cols-4">
+          <button disabled={busy || !active} onClick={() => onAction(container.id, 'recall')} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
+            <RotateCcw className="mx-auto mb-1" size={16} /> Panggil Ulang
+          </button>
+          <button disabled={busy || !active} onClick={() => onSpeak(container)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
+            <Volume2 className="mx-auto mb-1" size={16} /> Audio
+          </button>
+          <button disabled={busy || !active} onClick={() => onAction(container.id, 'skip')} className="rounded-2xl bg-rose-400/90 px-3 py-3 text-xs font-black text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] disabled:opacity-40">
+            <SkipForward className="mx-auto mb-1" size={16} /> Lewati
+          </button>
+          <button disabled={busy} onClick={() => onPause(container.id, !container.isPaused)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
+            {container.isPaused ? <Play className="mx-auto mb-1" size={16} /> : <Pause className="mx-auto mb-1" size={16} />}
+            {container.isPaused ? 'Aktifkan' : 'Pause'}
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -723,6 +766,8 @@ export default function QueueDashboardPage() {
         ui={ui}
       />
 
+      <WorkflowGuide ui={ui} />
+
       <div className="relative grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total Hari Ini" value={snapshot.analytics.totalToday} icon={UsersRound} hint="Semua tiket yang dibuat hari ini" ui={ui} />
         <StatCard label="Sedang Dipanggil" value={latestCalled ? formatQueueNumber(latestCalled.number) : '-'} icon={Megaphone} hint={latestCalled ? formatQueueService(latestCalled.service) : 'Belum ada panggilan aktif'} ui={ui} />
@@ -765,13 +810,23 @@ export default function QueueDashboardPage() {
                   {container.isPaused ? 'PAUSE' : 'LIVE'}
                 </span>
               </div>
-              <p className="mt-2 truncate text-xs opacity-75">{container.activeTicket ? formatQueueNumber(container.activeTicket.number) : 'Belum memanggil'}</p>
+              <p className="mt-1 truncate text-xs opacity-75">{container.operator} - {formatQueueService(container.service)}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-center text-[11px] font-black">
+                <div className={`rounded-xl px-2 py-2 ${selectedContainer?.id === container.id ? 'bg-slate-950/10' : isLight ? 'bg-white' : 'bg-black/20'}`}>
+                  <p>{container.waitingCount}</p>
+                  <p className="text-[9px] uppercase opacity-60">Antre</p>
+                </div>
+                <div className={`rounded-xl px-2 py-2 ${selectedContainer?.id === container.id ? 'bg-slate-950/10' : isLight ? 'bg-white' : 'bg-black/20'}`}>
+                  <p>{container.activeTicket ? formatQueueNumber(container.activeTicket.number) : '-'}</p>
+                  <p className="text-[9px] uppercase opacity-60">Aktif</p>
+                </div>
+              </div>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="relative mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="relative mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="space-y-4">
           {selectedContainer ? (
             <ContainerCard
@@ -785,7 +840,7 @@ export default function QueueDashboardPage() {
           ) : null}
 
           <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Container Lainnya</h2>
+            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Loket Lainnya</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {otherContainers.map((container) => (
                 <button
@@ -825,29 +880,6 @@ export default function QueueDashboardPage() {
 
         <div className="space-y-4">
           <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Realtime Graph</h2>
-            <div className="mt-4 h-56">
-              {chartReady ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <AreaChart data={snapshot.analytics.hourlyTraffic}>
-                    <defs>
-                      <linearGradient id="queueTotal" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.65} />
-                        <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke={ui.graphGrid} vertical={false} />
-                    <XAxis dataKey="hour" stroke="#64748b" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#64748b" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ ...ui.tooltip, borderRadius: 16 }} />
-                    <Area type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={3} fill="url(#queueTotal)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : null}
-            </div>
-          </div>
-
-          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Data Operator</h2>
@@ -885,6 +917,29 @@ export default function QueueDashboardPage() {
                   Belum ada data verifikasi yang dikirim ke operator.
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
+            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Realtime Graph</h2>
+            <div className="mt-4 h-56">
+              {chartReady ? (
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                  <AreaChart data={snapshot.analytics.hourlyTraffic}>
+                    <defs>
+                      <linearGradient id="queueTotal" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.65} />
+                        <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke={ui.graphGrid} vertical={false} />
+                    <XAxis dataKey="hour" stroke="#64748b" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#64748b" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ ...ui.tooltip, borderRadius: 16 }} />
+                    <Area type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={3} fill="url(#queueTotal)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : null}
             </div>
           </div>
 
