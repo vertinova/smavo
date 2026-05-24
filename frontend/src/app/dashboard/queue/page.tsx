@@ -1,37 +1,30 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 import {
-  Activity,
-  ChevronDown,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Clock3,
   FileSpreadsheet,
+  Loader2,
   Megaphone,
   MonitorUp,
-  Moon,
   Pause,
   Play,
   RadioTower,
   RotateCcw,
   Save,
-  Settings,
+  Settings2,
   SkipForward,
-  Sun,
+  Sparkles,
   Trash2,
   UsersRound,
   Volume2,
+  X,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import {
   pauseContainer,
   formatQueueNumber,
@@ -47,14 +40,38 @@ import {
   type QueueVoiceStyle,
 } from '@/lib/queue';
 import { useQueueStore } from '@/lib/queueStore';
-import { useTheme } from '@/lib/theme';
 
-const accentMap: Record<string, string> = {
-  cyan: 'from-cyan-400 to-blue-500 shadow-cyan-500/25 border-cyan-300/30',
-  violet: 'from-violet-400 to-fuchsia-500 shadow-violet-500/25 border-violet-300/30',
-  emerald: 'from-emerald-400 to-teal-500 shadow-emerald-500/25 border-emerald-300/30',
-  amber: 'from-amber-300 to-orange-500 shadow-amber-500/25 border-amber-300/30',
-  rose: 'from-rose-400 to-pink-500 shadow-rose-500/25 border-rose-300/30',
+const accentMap: Record<string, { gradient: string; border: string; glow: string; chip: string }> = {
+  cyan: {
+    gradient: 'from-cyan-400 to-blue-500',
+    border: 'border-cyan-200',
+    glow: 'shadow-cyan-500/30',
+    chip: 'bg-cyan-100 text-cyan-800 ring-cyan-200',
+  },
+  violet: {
+    gradient: 'from-violet-400 to-fuchsia-500',
+    border: 'border-violet-200',
+    glow: 'shadow-violet-500/30',
+    chip: 'bg-violet-100 text-violet-800 ring-violet-200',
+  },
+  emerald: {
+    gradient: 'from-emerald-400 to-teal-500',
+    border: 'border-emerald-200',
+    glow: 'shadow-emerald-500/30',
+    chip: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+  },
+  amber: {
+    gradient: 'from-amber-300 to-orange-500',
+    border: 'border-amber-200',
+    glow: 'shadow-amber-500/30',
+    chip: 'bg-amber-100 text-amber-800 ring-amber-200',
+  },
+  rose: {
+    gradient: 'from-rose-400 to-pink-500',
+    border: 'border-rose-200',
+    glow: 'shadow-rose-500/30',
+    chip: 'bg-rose-100 text-rose-800 ring-rose-200',
+  },
 };
 
 const accentOptions = [
@@ -161,361 +178,455 @@ function exportTicketsForExcel(tickets: QueueTicket[]) {
   URL.revokeObjectURL(url);
 }
 
-type QueueThemeClasses = {
-  panel: string;
-  subPanel: string;
-  text: string;
-  muted: string;
-  faint: string;
-  input: string;
-  graphGrid: string;
-  tooltip: { background: string; border: string; color: string };
+type StatCardProps = {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  hint?: string;
+  tone: 'cyan' | 'emerald' | 'violet' | 'amber';
 };
 
-function StatCard({ label, value, icon: Icon, hint, ui }: { label: string; value: string | number; icon: typeof Activity; hint: string; ui: QueueThemeClasses }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className={`text-xs font-bold uppercase tracking-[0.22em] ${ui.muted}`}>{label}</p>
-          <p className={`mt-3 text-3xl font-black tracking-normal ${ui.text}`}>{value}</p>
-        </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-300/20">
-          <Icon size={22} />
-        </div>
-      </div>
-      <p className={`mt-4 text-xs font-medium ${ui.muted}`}>{hint}</p>
-    </motion.div>
-  );
-}
+const toneClasses: Record<StatCardProps['tone'], string> = {
+  cyan: 'bg-gradient-to-br from-cyan-50 to-sky-100 ring-cyan-200 text-cyan-700',
+  emerald: 'bg-gradient-to-br from-emerald-50 to-teal-100 ring-emerald-200 text-emerald-700',
+  violet: 'bg-gradient-to-br from-violet-50 to-fuchsia-100 ring-violet-200 text-violet-700',
+  amber: 'bg-gradient-to-br from-amber-50 to-orange-100 ring-amber-200 text-amber-700',
+};
 
-function WorkflowGuide({ ui }: { ui: QueueThemeClasses }) {
-  const steps = [
-    { title: 'Ambil Nomor', desc: 'User memilih Verifikasi Berkas atau Informasi dari halaman antrean.', icon: UsersRound },
-    { title: 'Panggil Loket', desc: 'Petugas memilih loket lalu menekan tombol panggil berikutnya.', icon: Megaphone },
-    { title: 'Kirim / Selesai', desc: 'Verifikasi dikirim ke operator. Informasi langsung selesai.', icon: CheckCircle2 },
-  ];
+const toneIconClasses: Record<StatCardProps['tone'], string> = {
+  cyan: 'bg-cyan-500 text-white',
+  emerald: 'bg-emerald-500 text-white',
+  violet: 'bg-violet-500 text-white',
+  amber: 'bg-amber-500 text-white',
+};
 
+function StatCard({ label, value, icon: Icon, hint, tone }: StatCardProps) {
   return (
-    <div className={`relative mt-6 rounded-3xl border p-4 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-      <div className="grid gap-3 md:grid-cols-3">
-        {steps.map((step, index) => (
-          <div key={step.title} className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${ui.subPanel}`}>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950">
-              <step.icon size={18} />
-            </div>
-            <div className="min-w-0">
-              <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Langkah {index + 1}</p>
-              <p className={`mt-0.5 text-sm font-black ${ui.text}`}>{step.title}</p>
-              <p className={`mt-0.5 text-xs leading-relaxed ${ui.muted}`}>{step.desc}</p>
-            </div>
-          </div>
-        ))}
+    <div className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-card p-4 shadow-sm ring-1 ${toneClasses[tone]}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-80">{label}</p>
+          <p className="mt-2 truncate text-2xl font-black text-foreground lg:text-3xl">{value}</p>
+          {hint ? <p className="mt-1 truncate text-[11px] font-semibold opacity-70">{hint}</p> : null}
+        </div>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md ${toneIconClasses[tone]}`}>
+          <Icon size={18} />
+        </div>
       </div>
     </div>
   );
 }
 
-function DetailRow({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="min-w-0 rounded-2xl bg-black/20 p-3 ring-1 ring-white/10">
-      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-sm font-bold leading-snug text-white">{value || '-'}</p>
-    </div>
-  );
-}
-
-function ContainerCard({
-  container,
-  onAction,
-  onPause,
-  onSpeak,
-  busy,
-}: {
+type ContainerCardProps = {
   container: QueueContainer;
+  isSelected: boolean;
+  busy: boolean;
+  onSelect: (id: string) => void;
   onAction: (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => void;
   onPause: (containerId: string, paused: boolean) => void;
   onSpeak: (container: QueueContainer) => void;
-  busy: boolean;
-}) {
+};
+
+function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPause, onSpeak }: ContainerCardProps) {
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
-  const isVerificationTicket = formatQueueService(active?.service).toLowerCase().includes('verifikasi');
   const hasWaiting = container.waitingCount > 0;
-  const finishLabel = isVerificationTicket ? 'Kirim ke Operator' : 'Selesaikan Layanan';
+  const isVerification = formatQueueService(active?.service).toLowerCase().includes('verifikasi');
+  const finishLabel = isVerification ? 'Kirim ke Operator' : 'Selesaikan';
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`relative overflow-hidden rounded-3xl border bg-slate-950/80 p-5 shadow-2xl backdrop-blur-xl ${accent}`}
+      onClick={() => onSelect(container.id)}
+      className={`relative cursor-pointer overflow-hidden rounded-2xl border-2 bg-card p-4 shadow-sm transition-all ${
+        isSelected ? `${accent.border} shadow-lg ${accent.glow}` : 'border-border hover:border-accent/40'
+      }`}
     >
-      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent.split(' ').slice(0, 2).join(' ')}`} />
-      <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/10 blur-3xl" />
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent.gradient}`} />
 
-      <div className="relative flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">{container.name}</p>
-          <h3 className="mt-1 text-xl font-black text-white">{formatQueueService(container.service)}</h3>
-          <p className="mt-1 text-xs text-slate-400">{container.operator}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{container.name}</p>
+          <h3 className="mt-0.5 truncate text-base font-black text-foreground">{formatQueueService(container.service)}</h3>
+          <p className="mt-0.5 truncate text-xs font-semibold text-muted">{container.operator}</p>
         </div>
-        <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ${container.isPaused ? 'bg-amber-400/15 text-amber-200' : 'bg-emerald-400/15 text-emerald-200'}`}>
-          <span className={`h-2 w-2 rounded-full ${container.isPaused ? 'bg-amber-300' : 'bg-emerald-300 animate-pulse'}`} />
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black ring-1 ${
+          container.isPaused
+            ? 'bg-amber-100 text-amber-800 ring-amber-200'
+            : 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+        }`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${container.isPaused ? 'bg-amber-500' : 'animate-pulse bg-emerald-500'}`} />
           {container.isPaused ? 'PAUSE' : 'LIVE'}
-        </div>
+        </span>
       </div>
 
-      <div className="relative mt-6 rounded-3xl border border-white/10 bg-white/[0.06] p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Nomor Aktif</p>
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Nomor Aktif</p>
+          <AnimatePresence mode="wait">
             <motion.p
-              key={active?.number ?? 'empty'}
-              initial={{ scale: 0.92, opacity: 0 }}
+              key={active?.number ?? `${container.id}-empty`}
+              initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className={`mt-2 text-5xl font-black leading-none tracking-normal ${active ? 'text-white drop-shadow-[0_0_22px_rgba(34,211,238,0.45)]' : 'text-slate-600'}`}
+              exit={{ scale: 1.05, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className={`mt-0.5 truncate text-3xl font-black leading-none ${active ? 'text-foreground' : 'text-muted/40'} lg:text-4xl`}
             >
               {active ? formatQueueNumber(active.number) : '---'}
             </motion.p>
-          </div>
-          <div className="rounded-2xl bg-black/20 px-4 py-3 ring-1 ring-white/10">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Aksi Utama</p>
-            <p className="mt-1 max-w-[220px] text-sm font-bold leading-snug text-white">
-              {active ? finishLabel : hasWaiting ? 'Panggil nomor berikutnya.' : 'Belum ada antrean menunggu.'}
-            </p>
-          </div>
+          </AnimatePresence>
         </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl bg-black/20 p-3">
-            <p className="text-lg font-black text-white">{container.waitingCount}</p>
-            <p className="text-[10px] font-bold uppercase text-slate-500">Antre</p>
+        <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+          <div className={`rounded-lg px-2 py-1 text-center text-[10px] font-black ring-1 ${accent.chip}`}>
+            {container.waitingCount} antre
           </div>
-          <div className="rounded-2xl bg-black/20 p-3">
-            <p className="text-lg font-black text-white">{container.doneCount}</p>
-            <p className="text-[10px] font-bold uppercase text-slate-500">Selesai</p>
-          </div>
-          <div className="rounded-2xl bg-black/20 p-3">
-            <p className="text-lg font-black text-white">{container.skippedCount}</p>
-            <p className="text-[10px] font-bold uppercase text-slate-500">Lewat</p>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-2 md:grid-cols-2">
-          <DetailRow label="Nama" value={active?.visitorName} />
-          <DetailRow label="Asal Sekolah" value={active?.originSchool} />
-          <DetailRow label="Jalur" value={active?.registrationPath} />
-          <DetailRow label="Layanan" value={active?.serviceChoice ?? (active ? formatQueueService(active.service) : '-')} />
+          <p className="text-[10px] font-semibold text-muted">
+            {container.doneCount} selesai
+          </p>
         </div>
       </div>
 
-      <div className="relative mt-4 grid gap-2 md:grid-cols-2">
+      {active ? (
+        <div className="mt-3 rounded-xl border border-border bg-surface px-3 py-2">
+          <p className="truncate text-xs font-black text-foreground">{active.visitorName}</p>
+          <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">
+            {active.originSchool || '—'} {active.registrationPath ? `· ${active.registrationPath}` : ''}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mt-3 grid grid-cols-2 gap-2" onClick={(event) => event.stopPropagation()}>
         <button
           disabled={busy || container.isPaused || Boolean(active) || !hasWaiting}
           onClick={() => onAction(container.id, 'call')}
-          title={active ? 'Selesaikan nomor aktif dulu sebelum memanggil nomor berikutnya' : 'Panggil nomor berikutnya'}
-          className="flex min-h-[68px] items-center justify-center gap-3 rounded-2xl bg-cyan-400 px-4 py-4 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] disabled:opacity-40"
+          title={active ? 'Selesaikan nomor aktif dulu' : hasWaiting ? 'Panggil nomor berikutnya' : 'Antrean kosong'}
+          className={`flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br ${accent.gradient} px-3 py-2.5 text-xs font-black text-white shadow-md transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100`}
         >
-          <SkipForward size={18} /> {active ? 'Nomor Masih Aktif' : hasWaiting ? 'Panggil Berikutnya' : 'Antrean Kosong'}
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Megaphone size={14} />}
+          {active ? 'Aktif' : hasWaiting ? 'Panggil' : 'Kosong'}
         </button>
-        <button disabled={busy || !active} onClick={() => onAction(container.id, 'done')} className="flex min-h-[68px] items-center justify-center gap-3 rounded-2xl bg-emerald-400/90 px-4 py-4 text-sm font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.01] disabled:opacity-40">
-          <CheckCircle2 size={18} /> {finishLabel}
+        <button
+          disabled={busy || !active}
+          onClick={() => onAction(container.id, 'done')}
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-black text-white shadow-md transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+        >
+          <CheckCircle2 size={14} />
+          {finishLabel}
         </button>
-
-        <div className="grid grid-cols-2 gap-2 md:col-span-2 lg:grid-cols-4">
-          <button disabled={busy || !active} onClick={() => onAction(container.id, 'recall')} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
-            <RotateCcw className="mx-auto mb-1" size={16} /> Panggil Ulang
+        <div className="col-span-2 grid grid-cols-3 gap-2">
+          <button
+            disabled={busy || !active}
+            onClick={() => onAction(container.id, 'recall')}
+            title="Panggil ulang nomor aktif"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-surface px-2 py-2 text-[11px] font-bold text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+          >
+            <RotateCcw size={12} /> Ulang
           </button>
-          <button disabled={busy || !active} onClick={() => onSpeak(container)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
-            <Volume2 className="mx-auto mb-1" size={16} /> Audio
+          <button
+            disabled={busy || !active}
+            onClick={() => onSpeak(container)}
+            title="Putar suara panggilan"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-surface px-2 py-2 text-[11px] font-bold text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+          >
+            <Volume2 size={12} /> Audio
           </button>
-          <button disabled={busy || !active} onClick={() => onAction(container.id, 'skip')} className="rounded-2xl bg-rose-400/90 px-3 py-3 text-xs font-black text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] disabled:opacity-40">
-            <SkipForward className="mx-auto mb-1" size={16} /> Lewati
-          </button>
-          <button disabled={busy} onClick={() => onPause(container.id, !container.isPaused)} className="rounded-2xl bg-white/10 px-3 py-3 text-xs font-black text-white ring-1 ring-white/10 transition hover:bg-white/15 disabled:opacity-40">
-            {container.isPaused ? <Play className="mx-auto mb-1" size={16} /> : <Pause className="mx-auto mb-1" size={16} />}
-            {container.isPaused ? 'Aktifkan' : 'Pause'}
+          <button
+            disabled={busy || !active}
+            onClick={() => onAction(container.id, 'skip')}
+            title="Lewati nomor aktif"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-rose-50 px-2 py-2 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-100 disabled:opacity-40"
+          >
+            <SkipForward size={12} /> Lewati
           </button>
         </div>
+        <button
+          disabled={busy}
+          onClick={() => onPause(container.id, !container.isPaused)}
+          className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg bg-surface px-2 py-1.5 text-[11px] font-bold text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+        >
+          {container.isPaused ? <Play size={12} /> : <Pause size={12} />}
+          {container.isPaused ? 'Aktifkan Loket' : 'Pause Loket'}
+        </button>
       </div>
     </motion.div>
   );
 }
 
-function ContainerSettingsPanel({
-  draft,
-  busy,
-  message,
-  open,
-  onChange,
-  onCountChange,
-  onRemove,
-  onSave,
-  onToggle,
-  ui,
-}: {
+type ActiveCallHeroProps = {
+  container: QueueContainer | null;
+  busy: boolean;
+  onAction: (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => void;
+  onSpeak: (container: QueueContainer) => void;
+};
+
+function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroProps) {
+  const active = container?.activeTicket ?? null;
+  const accent = accentMap[container?.accent ?? 'cyan'] ?? accentMap.cyan;
+  const isVerification = formatQueueService(active?.service).toLowerCase().includes('verifikasi');
+  const finishLabel = isVerification ? 'Kirim ke Operator' : 'Selesaikan Layanan';
+  const hasWaiting = (container?.waitingCount ?? 0) > 0;
+
+  return (
+    <div className={`relative overflow-hidden rounded-3xl border bg-card p-5 shadow-xl ${active ? accent.border : 'border-border'} lg:p-7`}>
+      <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${accent.gradient}`} />
+      {active ? (
+        <motion.div
+          className={`absolute inset-0 bg-gradient-to-br ${accent.gradient} opacity-[0.06]`}
+          animate={{ opacity: [0.04, 0.10, 0.04] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ) : null}
+
+      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-accent">
+            <Sparkles size={12} />
+            {active ? 'Sedang Dipanggil' : 'Tidak Ada Panggilan'}
+          </div>
+          <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-muted">{container?.name ?? '—'}</p>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active?.number ?? 'hero-empty'}
+              initial={{ scale: 0.92, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 1.04, opacity: 0, y: -8 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+              className="mt-2 min-w-0"
+            >
+              <p className={`truncate text-5xl font-black leading-none tracking-tight lg:text-7xl ${active ? 'text-foreground' : 'text-muted/40'}`}>
+                {active ? formatQueueNumber(active.number) : '---'}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+          {active ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:max-w-2xl">
+              <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Nama</p>
+                <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.visitorName}</p>
+              </div>
+              <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Asal Sekolah</p>
+                <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.originSchool || '—'}</p>
+              </div>
+              <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Jalur</p>
+                <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.registrationPath || '—'}</p>
+              </div>
+              <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Layanan</p>
+                <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.serviceChoice ?? formatQueueService(active.service)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 max-w-md text-sm font-semibold text-muted">
+              {hasWaiting ? 'Tekan tombol panggil untuk menarik nomor antrean berikutnya.' : 'Belum ada antrean menunggu di loket ini.'}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-row flex-wrap items-stretch gap-2 lg:flex-col lg:w-72">
+          <button
+            disabled={busy || !container || container.isPaused || Boolean(active) || !hasWaiting}
+            onClick={() => container && onAction(container.id, 'call')}
+            className={`group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-br ${accent.gradient} px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 lg:py-4 lg:text-base`}
+          >
+            {busy ? <Loader2 size={18} className="animate-spin" /> : <Megaphone size={18} />}
+            {active ? 'Nomor Masih Aktif' : hasWaiting ? 'Panggil Berikutnya' : 'Tidak Ada Antrean'}
+          </button>
+          <button
+            disabled={busy || !active}
+            onClick={() => container && onAction(container.id, 'done')}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 lg:py-4 lg:text-base"
+          >
+            <CheckCircle2 size={18} />
+            {finishLabel}
+          </button>
+          <div className="flex w-full gap-2">
+            <button
+              disabled={busy || !active}
+              onClick={() => container && onAction(container.id, 'recall')}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+            >
+              <RotateCcw size={13} /> Ulang
+            </button>
+            <button
+              disabled={busy || !active || !container}
+              onClick={() => container && onSpeak(container)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+            >
+              <Volume2 size={13} /> Audio
+            </button>
+            <button
+              disabled={busy || !active}
+              onClick={() => container && onAction(container.id, 'skip')}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-100 disabled:opacity-40"
+            >
+              <SkipForward size={13} /> Lewati
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ContainerSettingsDrawerProps = {
+  open: boolean;
   draft: QueueContainerConfig[];
   busy: boolean;
   message: string;
-  open: boolean;
+  onClose: () => void;
   onChange: (index: number, patch: Partial<QueueContainerConfig>) => void;
   onCountChange: (count: number) => void;
   onRemove: (index: number) => void;
   onSave: () => void;
-  onToggle: () => void;
-  ui: QueueThemeClasses;
-}) {
+};
+
+function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange, onCountChange, onRemove, onSave }: ContainerSettingsDrawerProps) {
   return (
-    <div className={`relative mt-6 rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[11px] font-black text-cyan-200">
-            <Settings size={13} />
-            Pengaturan Admin
-          </div>
-          <h2 className={`text-xl font-black ${ui.text}`}>Loket Layanan</h2>
-          <p className={`mt-1 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Ubah jumlah loket, nama loket, layanan, kode nomor, petugas, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
-          </p>
-          <p className={`mt-2 max-w-2xl text-xs leading-relaxed ${ui.muted}`}>
-            Samakan kolom layanan dengan loket di lapangan: Verifikasi Berkas untuk verifikator dan Informasi untuk meja informasi. Kode nomor antrean memakai SPMB.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className={`rounded-2xl border px-4 py-3 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
-            <span className={ui.faint}>Jumlah</span>
-            <span className={`ml-3 text-sm font-black ${ui.text}`}>{draft.length}</span>
-          </div>
-          <button
-            type="button"
-            onClick={onToggle}
-            className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02]"
-            aria-expanded={open}
-          >
-            {open ? 'Tutup Pengaturan' : 'Buka Pengaturan'}
-            <ChevronDown size={17} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-          </button>
-        </div>
-      </div>
-
+    <AnimatePresence>
       {open ? (
-        <>
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-          <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
-            Jumlah
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={draft.length}
-              onChange={(event) => onCountChange(Number(event.target.value))}
-              className={`w-16 rounded-xl border px-3 py-2 text-center text-sm font-black outline-none focus:border-cyan-300/60 ${ui.input}`}
-            />
-          </label>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onSave}
-            className="inline-flex items-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-60"
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 240, damping: 28 }}
+            className="flex h-full w-full max-w-2xl flex-col bg-card shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
           >
-            <Save size={16} />
-            {busy ? 'Menyimpan...' : 'Simpan Loket'}
-          </button>
-        </div>
-
-        <div className="mt-5 grid gap-3">
-          {draft.map((container, index) => (
-            <div key={`${container.id}-${index}`} className={`grid gap-3 rounded-3xl border p-4 lg:grid-cols-[1.1fr_1.1fr_0.7fr_1fr_0.75fr_auto] ${ui.subPanel}`}>
-              <label className="min-w-0">
-                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Nama Loket</span>
-                <input
-                  value={container.name}
-                  onChange={(event) => onChange(index, { name: event.target.value })}
-                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="Verifikator 1"
-                />
-              </label>
-
-              <label className="min-w-0">
-                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Layanan</span>
-                <input
-                  value={container.service}
-                  onChange={(event) => onChange(index, { service: event.target.value })}
-                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="Verifikasi Berkas"
-                />
-              </label>
-
-              <label className="min-w-0">
-                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Kode</span>
-                <input
-                  value={container.code}
-                  maxLength={8}
-                  onChange={(event) => onChange(index, { code: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })}
-                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black uppercase outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="SPMB"
-                />
-              </label>
-
-              <label className="min-w-0">
-                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Petugas</span>
-                <input
-                  value={container.operator}
-                  onChange={(event) => onChange(index, { operator: event.target.value })}
-                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-cyan-300/60 ${ui.input}`}
-                  placeholder="Verifikator 1"
-                />
-              </label>
-
-              <label className="min-w-0">
-                <span className={`mb-1 block text-[10px] font-black uppercase tracking-[0.18em] ${ui.faint}`}>Warna</span>
-                <select
-                  value={container.accent}
-                  onChange={(event) => onChange(index, { accent: event.target.value })}
-                  className={`w-full rounded-2xl border px-3 py-2.5 text-sm font-black outline-none focus:border-cyan-300/60 ${ui.input}`}
-                >
-                  {accentOptions.map((accent) => (
-                    <option key={accent.value} value={accent.value}>{accent.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              <button
-                type="button"
-                disabled={draft.length <= 1}
-                onClick={() => onRemove(index)}
-                className="flex h-[42px] w-full items-center justify-center self-end rounded-2xl bg-rose-400/15 text-rose-200 ring-1 ring-rose-300/20 transition hover:bg-rose-400/25 disabled:cursor-not-allowed disabled:opacity-40 lg:w-12"
-                aria-label={`Hapus ${container.name}`}
-              >
-                <Trash2 size={16} />
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-accent">Pengaturan</p>
+                <h2 className="mt-0.5 text-xl font-black text-foreground">Konfigurasi Loket</h2>
+              </div>
+              <button type="button" onClick={onClose} className="rounded-xl bg-surface p-2 text-muted-foreground transition hover:bg-card-hover">
+                <X size={18} />
               </button>
             </div>
-          ))}
-        </div>
-        </>
-      ) : null}
 
-      {message ? (
-        <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm font-bold ${ui.subPanel} ${ui.text}`}>
-          {message}
-        </div>
+            <div className="flex flex-col gap-4 overflow-y-auto px-6 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Jumlah Loket</p>
+                  <p className="text-2xl font-black text-foreground">{draft.length}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={draft.length}
+                    onChange={(event) => onCountChange(Number(event.target.value))}
+                    className="w-20 rounded-xl border border-border bg-background px-3 py-2 text-center text-sm font-black text-foreground outline-none focus:border-accent/60"
+                  />
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={onSave}
+                    className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-black text-white shadow-md transition hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    {busy ? 'Menyimpan' : 'Simpan'}
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Ubah jumlah loket, nama, layanan, kode prefix, petugas, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
+              </p>
+
+              <div className="space-y-3">
+                {draft.map((container, index) => (
+                  <div key={`${container.id}-${index}`} className="rounded-2xl border border-border bg-surface p-3">
+                    <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_0.7fr_1fr_0.7fr_auto]">
+                      <label className="min-w-0">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Nama</span>
+                        <input
+                          value={container.name}
+                          onChange={(event) => onChange(index, { name: event.target.value })}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold text-foreground outline-none focus:border-accent/60"
+                          placeholder="Verifikator 1"
+                        />
+                      </label>
+                      <label className="min-w-0">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Layanan</span>
+                        <input
+                          value={container.service}
+                          onChange={(event) => onChange(index, { service: event.target.value })}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold text-foreground outline-none focus:border-accent/60"
+                          placeholder="Verifikasi Berkas"
+                        />
+                      </label>
+                      <label className="min-w-0">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Kode</span>
+                        <input
+                          value={container.code}
+                          maxLength={8}
+                          onChange={(event) => onChange(index, { code: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-black uppercase text-foreground outline-none focus:border-accent/60"
+                          placeholder="SPMB"
+                        />
+                      </label>
+                      <label className="min-w-0">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Petugas</span>
+                        <input
+                          value={container.operator}
+                          onChange={(event) => onChange(index, { operator: event.target.value })}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold text-foreground outline-none focus:border-accent/60"
+                        />
+                      </label>
+                      <label className="min-w-0">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Warna</span>
+                        <select
+                          value={container.accent}
+                          onChange={(event) => onChange(index, { accent: event.target.value })}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-black text-foreground outline-none focus:border-accent/60"
+                        >
+                          {accentOptions.map((accent) => (
+                            <option key={accent.value} value={accent.value}>{accent.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        disabled={draft.length <= 1}
+                        onClick={() => onRemove(index)}
+                        className="flex h-[38px] w-full items-center justify-center self-end rounded-lg bg-rose-50 text-rose-600 ring-1 ring-rose-200 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40 lg:w-10"
+                        aria-label={`Hapus ${container.name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {message ? (
+                <div className="rounded-xl border border-border bg-surface px-4 py-3 text-xs font-bold text-foreground">
+                  {message}
+                </div>
+              ) : null}
+            </div>
+          </motion.div>
+        </motion.div>
       ) : null}
-    </div>
+    </AnimatePresence>
   );
 }
 
 export default function QueueDashboardPage() {
   const { snapshot, connected, connect, refresh, setSnapshot } = useQueueStore();
-  const { theme, setTheme } = useTheme();
   const [busy, setBusy] = useState(false);
   const [volume, setVolume] = useState(0.9);
-  const [chartReady, setChartReady] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [voiceStyle, setVoiceStyle] = useState<QueueVoiceStyle>('bank');
   const [settingsBusy, setSettingsBusy] = useState(false);
@@ -524,9 +635,11 @@ export default function QueueDashboardPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedContainerId, setSelectedContainerId] = useState('');
   const [containerDraft, setContainerDraft] = useState<QueueContainerConfig[]>([]);
+  const [actionFeedback, setActionFeedback] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
+  const [showHistory, setShowHistory] = useState(true);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setChartReady(true);
     refresh().catch(() => {});
     return connect();
   }, [connect, refresh]);
@@ -555,19 +668,28 @@ export default function QueueDashboardPage() {
     }
   }, [selectedContainerId, snapshot.containers]);
 
+  useEffect(() => () => {
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+  }, []);
+
   const latestCalled = useMemo(
-    () => snapshot.containers.find((container) => container.activeTicket)?.activeTicket ?? null,
+    () => snapshot.containers
+      .filter((container) => container.activeTicket?.calledAt)
+      .sort((a, b) => new Date(b.activeTicket!.calledAt!).getTime() - new Date(a.activeTicket!.calledAt!).getTime())[0]
+      ?.activeTicket ?? null,
     [snapshot.containers]
   );
 
   const selectedContainer = useMemo(
-    () => snapshot.containers.find((container) => container.id === selectedContainerId) ?? snapshot.containers[0],
+    () => snapshot.containers.find((container) => container.id === selectedContainerId) ?? snapshot.containers[0] ?? null,
     [selectedContainerId, snapshot.containers]
   );
 
-  const otherContainers = useMemo(
-    () => snapshot.containers.filter((container) => container.id !== selectedContainer?.id),
-    [selectedContainer?.id, snapshot.containers]
+  const recentHistory = useMemo(
+    () => snapshot.tickets
+      .filter((ticket) => ['DONE', 'SKIPPED', 'CALLING', 'SERVING'].includes(ticket.status))
+      .slice(0, 14),
+    [snapshot.tickets]
   );
 
   const operatorData = useMemo(
@@ -582,7 +704,14 @@ export default function QueueDashboardPage() {
     style: voiceStyle,
   }), [voiceStyle, volume]);
 
+  const showFeedback = (text: string, tone: 'ok' | 'warn' = 'ok') => {
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    setActionFeedback({ text, tone });
+    feedbackTimer.current = setTimeout(() => setActionFeedback(null), 2400);
+  };
+
   const runAction = async (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => {
+    if (busy) return;
     setBusy(true);
     try {
       const result = await queueAction(containerId, action);
@@ -590,24 +719,40 @@ export default function QueueDashboardPage() {
       if (container?.activeTicket && ['call', 'next', 'recall'].includes(action)) {
         speakQueueCall(container.activeTicket, container, audioOptions);
       }
+      const labels: Record<typeof action, string> = {
+        call: 'Nomor berikutnya dipanggil',
+        next: 'Nomor berikutnya dipanggil',
+        recall: 'Nomor aktif dipanggil ulang',
+        done: 'Layanan diselesaikan',
+        skip: 'Nomor dilewati',
+      };
+      showFeedback(labels[action]);
       await refresh();
+    } catch (error: any) {
+      showFeedback(error?.response?.data?.message || 'Aksi gagal dijalankan', 'warn');
     } finally {
       setBusy(false);
     }
   };
 
   const runPause = async (containerId: string, paused: boolean) => {
+    if (busy) return;
     setBusy(true);
     try {
       await pauseContainer(containerId, paused);
+      showFeedback(paused ? 'Loket di-pause' : 'Loket diaktifkan');
       await refresh();
+    } catch (error: any) {
+      showFeedback(error?.response?.data?.message || 'Aksi gagal dijalankan', 'warn');
     } finally {
       setBusy(false);
     }
   };
 
   const enableAudio = () => {
-    setAudioEnabled(unlockQueueAudio(audioOptions));
+    const enabled = unlockQueueAudio(audioOptions);
+    setAudioEnabled(enabled);
+    showFeedback(enabled ? 'Suara panggilan aktif' : 'Browser belum mendukung suara', enabled ? 'ok' : 'warn');
   };
 
   const changeContainerDraft = (index: number, patch: Partial<QueueContainerConfig>) => {
@@ -638,7 +783,7 @@ export default function QueueDashboardPage() {
 
   const saveContainers = async () => {
     setSettingsBusy(true);
-    setSettingsMessage('Menyimpan konfigurasi container...');
+    setSettingsMessage('Menyimpan konfigurasi loket...');
     try {
       const result = await updateQueueContainers(containerDraft.map((container, index) => ({
         ...container,
@@ -651,314 +796,275 @@ export default function QueueDashboardPage() {
       setContainerDraft(result.snapshot.containers.map(toContainerConfig));
       setSettingsDirty(false);
       setSettingsMessage('Konfigurasi loket berhasil disimpan.');
+      showFeedback('Konfigurasi loket tersimpan');
     } catch (error: any) {
-      setSettingsMessage(error.response?.data?.message || 'Konfigurasi loket gagal disimpan.');
+      const message = error.response?.data?.message || 'Konfigurasi loket gagal disimpan.';
+      setSettingsMessage(message);
+      showFeedback(message, 'warn');
     } finally {
       setSettingsBusy(false);
     }
   };
 
-  const isLight = theme === 'light';
-  const ui: QueueThemeClasses = {
-    panel: isLight
-      ? 'border-slate-200 bg-white text-slate-900 shadow-slate-200/70'
-      : 'border-white/10 bg-white/[0.07] text-white shadow-black/20',
-    subPanel: isLight
-      ? 'border-slate-200 bg-slate-50 text-slate-900'
-      : 'border-white/10 bg-black/20 text-white',
-    text: isLight ? 'text-slate-950' : 'text-white',
-    muted: isLight ? 'text-slate-600' : 'text-slate-400',
-    faint: isLight ? 'text-slate-500' : 'text-slate-500',
-    input: isLight
-      ? 'border-slate-200 bg-white text-slate-950 placeholder:text-slate-400'
-      : 'border-white/10 bg-slate-950 text-white placeholder:text-slate-600',
-    graphGrid: isLight ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.06)',
-    tooltip: isLight
-      ? { background: '#ffffff', border: '1px solid rgba(15,23,42,0.14)', color: '#0f172a' }
-      : { background: '#020617', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' },
-  };
-
   return (
-    <div className={`min-h-full rounded-[32px] p-4 shadow-2xl lg:p-6 ${isLight ? 'bg-slate-50 text-slate-950 shadow-slate-200/70' : 'bg-slate-950 text-white shadow-slate-950/30'}`}>
-      <div className={`pointer-events-none fixed inset-0 ${isLight ? 'opacity-20' : 'opacity-30'}`}>
-        <div className="absolute left-1/4 top-20 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
-        <div className="absolute bottom-10 right-10 h-80 w-80 rounded-full bg-violet-500/20 blur-3xl" />
-      </div>
-
-      <div className="relative mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-4 lg:space-y-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-1.5 text-xs font-black text-cyan-200">
-            <RadioTower size={14} />
-            {connected ? 'REALTIME CONNECTED' : 'CONNECTING'}
+          <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-accent">
+            <RadioTower size={12} className={connected ? '' : 'animate-pulse'} />
+            {connected ? 'Realtime Connected' : 'Connecting'}
           </div>
-          <h1 className={`text-3xl font-black tracking-tight lg:text-5xl ${ui.text}`}>Command Center Antrean</h1>
-          <p className={`mt-2 max-w-2xl text-sm ${ui.muted}`}>
-            Dashboard petugas untuk memanggil dan memonitor layanan Verifikasi Berkas dan Informasi secara realtime.
+          <h1 className="mt-2 text-2xl font-black tracking-tight text-foreground lg:text-3xl">Command Center Antrean</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Panggil dan kelola antrean Verifikasi Berkas dan Informasi secara realtime.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className={`flex items-center gap-1 rounded-2xl border p-1 ${ui.subPanel}`}>
-            <button
-              type="button"
-              onClick={() => setTheme('light')}
-              className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${theme === 'light' ? 'bg-cyan-300 text-slate-950 shadow-sm' : `${ui.muted} hover:bg-cyan-300/10`}`}
-            >
-              <Sun size={14} /> Light
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme('dark')}
-              className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${theme === 'dark' ? 'bg-cyan-300 text-slate-950 shadow-sm' : `${ui.muted} hover:bg-cyan-300/10`}`}
-            >
-              <Moon size={14} /> Dark
-            </button>
-          </div>
-          <a href="/queue-display" target="_blank" className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-white/10">
-            <MonitorUp size={17} /> Buka Display TV
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={enableAudio}
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black shadow-sm transition hover:scale-[1.02] ${
+              audioEnabled ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-card text-foreground ring-1 ring-border hover:bg-card-hover'
+            }`}
+          >
+            <Volume2 size={14} />
+            {audioEnabled ? 'Suara Aktif' : 'Aktifkan Suara'}
+          </button>
+          <label className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-muted-foreground ring-1 ring-border">
+            <Volume2 size={13} />
+            <input type="range" min="0" max="1" step="0.1" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="w-20 accent-cyan-500" />
+          </label>
+          <select
+            value={voiceStyle}
+            onChange={(event) => setVoiceStyle(event.target.value as QueueVoiceStyle)}
+            className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-black text-foreground outline-none focus:border-accent/60"
+          >
+            {voiceStyleOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <a
+            href="/queue-display"
+            target="_blank"
+            className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 text-xs font-black text-background shadow-sm transition hover:opacity-90"
+          >
+            <MonitorUp size={14} /> Display TV
           </a>
           <button
             type="button"
             onClick={() => exportTicketsForExcel(snapshot.tickets)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-300 px-4 py-3 text-sm font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-emerald-600"
           >
-            <FileSpreadsheet size={17} /> Export Excel
+            <FileSpreadsheet size={14} /> Export
           </button>
           <button
             type="button"
-            onClick={enableAudio}
-            className={`inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black shadow-lg transition ${
-              audioEnabled
-                ? 'bg-emerald-300 text-slate-950 shadow-emerald-500/10'
-                : 'bg-cyan-300 text-slate-950 shadow-cyan-500/20'
-            }`}
+            onClick={() => setSettingsOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-black text-foreground ring-1 ring-border transition hover:bg-card-hover"
           >
-            <Volume2 size={17} /> {audioEnabled ? 'Suara Aktif' : 'Aktifkan Suara'}
+            <Settings2 size={14} /> Loket
           </button>
-          <label className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
-            <Volume2 size={16} />
-            <input type="range" min="0" max="1" step="0.1" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="w-24 accent-cyan-300" />
-          </label>
-          <label className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-bold ${ui.subPanel} ${ui.muted}`}>
-            Gaya
-            <select
-              value={voiceStyle}
-              onChange={(event) => setVoiceStyle(event.target.value as QueueVoiceStyle)}
-              className={`rounded-xl border px-3 py-2 text-xs font-black outline-none ${ui.input}`}
-            >
-              {voiceStyleOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
         </div>
       </div>
 
-      <ContainerSettingsPanel
-        draft={containerDraft}
-        busy={settingsBusy}
-        message={settingsMessage}
-        open={settingsOpen}
-        onChange={changeContainerDraft}
-        onCountChange={changeContainerCount}
-        onRemove={removeContainerDraft}
-        onSave={saveContainers}
-        onToggle={() => setSettingsOpen((current) => !current)}
-        ui={ui}
-      />
-
-      <WorkflowGuide ui={ui} />
-
-      <div className="relative grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total Hari Ini" value={snapshot.analytics.totalToday} icon={UsersRound} hint="Semua tiket yang dibuat hari ini" ui={ui} />
-        <StatCard label="Sedang Dipanggil" value={latestCalled ? formatQueueNumber(latestCalled.number) : '-'} icon={Megaphone} hint={latestCalled ? formatQueueService(latestCalled.service) : 'Belum ada panggilan aktif'} ui={ui} />
-        <StatCard label="Selesai" value={snapshot.analytics.done} icon={CheckCircle2} hint="Layanan berhasil selesai" ui={ui} />
-        <StatCard label="Rata-rata Tunggu" value={`${snapshot.analytics.averageWaitMinutes}m`} icon={Clock3} hint={`Peak hour: ${snapshot.analytics.peakHour}`} ui={ui} />
-        <StatCard label="Loket Aktif" value={snapshot.analytics.activeContainers} icon={Activity} hint="Loket yang tidak pause" ui={ui} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Hari Ini" value={snapshot.analytics.totalToday} icon={UsersRound} hint="Tiket yang dibuat hari ini" tone="cyan" />
+        <StatCard
+          label="Sedang Dipanggil"
+          value={latestCalled ? formatQueueNumber(latestCalled.number) : '—'}
+          icon={Megaphone}
+          hint={latestCalled ? formatQueueService(latestCalled.service) : 'Belum ada panggilan'}
+          tone="violet"
+        />
+        <StatCard label="Selesai" value={snapshot.analytics.done} icon={CheckCircle2} hint="Layanan berhasil" tone="emerald" />
+        <StatCard
+          label="Rata-rata Tunggu"
+          value={`${snapshot.analytics.averageWaitMinutes}m`}
+          icon={Clock3}
+          hint={`Peak: ${snapshot.analytics.peakHour} · ${snapshot.analytics.activeContainers} loket aktif`}
+          tone="amber"
+        />
       </div>
 
-      <div className={`relative mt-6 rounded-3xl border p-4 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className={`text-lg font-black ${ui.text}`}>Pilih Loket</h2>
-            <p className={`mt-1 text-xs ${ui.muted}`}>Pilih loket verifikator atau informasi untuk memanggil antrean. Operator cukup menerima data hasil verifikasi.</p>
-          </div>
-          <select
-            value={selectedContainer?.id ?? ''}
-            onChange={(event) => setSelectedContainerId(event.target.value)}
-            className={`w-full rounded-2xl border px-4 py-3 text-sm font-black outline-none lg:w-72 ${ui.input}`}
-          >
-            {snapshot.containers.map((container) => (
-              <option key={container.id} value={container.id}>{container.name} - {container.operator}</option>
-            ))}
-          </select>
-        </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {snapshot.containers.map((container) => (
-            <button
-              key={container.id}
-              type="button"
-              onClick={() => setSelectedContainerId(container.id)}
-              className={`min-w-0 rounded-2xl border px-4 py-3 text-left transition ${
-                selectedContainer?.id === container.id
-                  ? 'border-cyan-300 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-500/20'
-                  : `${ui.subPanel} ${ui.text} hover:border-cyan-300/50`
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="truncate text-sm font-black">{container.name}</p>
-                <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black ${container.isPaused ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'}`}>
-                  {container.isPaused ? 'PAUSE' : 'LIVE'}
-                </span>
-              </div>
-              <p className="mt-1 truncate text-xs opacity-75">{container.operator} - {formatQueueService(container.service)}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-center text-[11px] font-black">
-                <div className={`rounded-xl px-2 py-2 ${selectedContainer?.id === container.id ? 'bg-slate-950/10' : isLight ? 'bg-white' : 'bg-black/20'}`}>
-                  <p>{container.waitingCount}</p>
-                  <p className="text-[9px] uppercase opacity-60">Antre</p>
-                </div>
-                <div className={`rounded-xl px-2 py-2 ${selectedContainer?.id === container.id ? 'bg-slate-950/10' : isLight ? 'bg-white' : 'bg-black/20'}`}>
-                  <p>{container.activeTicket ? formatQueueNumber(container.activeTicket.number) : '-'}</p>
-                  <p className="text-[9px] uppercase opacity-60">Aktif</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="relative mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="space-y-4">
-          {selectedContainer ? (
-            <ContainerCard
-              key={selectedContainer.id}
-              container={selectedContainer}
-              busy={busy}
-              onAction={runAction}
-              onPause={runPause}
-              onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
-            />
-          ) : null}
+          <ActiveCallHero
+            container={selectedContainer}
+            busy={busy}
+            onAction={runAction}
+            onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
+          />
 
-          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Loket Lainnya</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {otherContainers.map((container) => (
-                <button
-                  type="button"
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Loket Aktif</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Klik loket untuk mengaturnya sebagai panggilan utama. Setiap loket bisa dipanggil langsung dari kartunya.
+                </p>
+              </div>
+              <span className="rounded-full bg-accent/10 px-3 py-1 text-[11px] font-black text-accent">
+                {snapshot.containers.length} loket
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3">
+              {snapshot.containers.map((container) => (
+                <ContainerCard
                   key={container.id}
-                  onClick={() => setSelectedContainerId(container.id)}
-                  className={`min-w-0 rounded-2xl border p-4 text-left transition hover:border-cyan-300/50 ${ui.subPanel}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className={`truncate text-sm font-black ${ui.text}`}>{container.name}</p>
-                      <p className={`mt-1 truncate text-xs ${ui.muted}`}>{container.operator} - {formatQueueService(container.service)}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${container.isPaused ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'}`}>
-                      {container.isPaused ? 'PAUSE' : 'LIVE'}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                    <div className={`rounded-xl px-2 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
-                      <p className={`text-sm font-black ${ui.text}`}>{container.waitingCount}</p>
-                      <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Antre</p>
-                    </div>
-                    <div className={`rounded-xl px-2 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
-                      <p className={`text-sm font-black ${ui.text}`}>{container.doneCount}</p>
-                      <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Selesai</p>
-                    </div>
-                    <div className={`rounded-xl px-2 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
-                      <p className={`truncate text-sm font-black ${ui.text}`}>{container.activeTicket ? formatQueueNumber(container.activeTicket.number) : '-'}</p>
-                      <p className={`text-[10px] font-bold uppercase ${ui.faint}`}>Aktif</p>
-                    </div>
-                  </div>
-                </button>
+                  container={container}
+                  isSelected={container.id === selectedContainer?.id}
+                  busy={busy}
+                  onSelect={setSelectedContainerId}
+                  onAction={runAction}
+                  onPause={runPause}
+                  onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
+                />
               ))}
             </div>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Data Operator</h2>
-                <p className={`mt-1 text-xs ${ui.muted}`}>Data user SPMB yang sudah selesai di verifikator.</p>
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Data Operator</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">User SPMB yang sudah selesai verifikasi.</p>
               </div>
-              <span className="rounded-full bg-emerald-300 px-3 py-1 text-[10px] font-black text-slate-950">
+              <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-black text-emerald-700">
                 {operatorData.length} data
               </span>
             </div>
-            <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 max-h-[300px] space-y-2 overflow-y-auto pr-1">
               {operatorData.length ? operatorData.map((ticket) => (
-                <div key={ticket.id} className={`rounded-2xl border px-4 py-3 ${ui.subPanel}`}>
-                  <div className="flex items-start justify-between gap-3">
+                <div key={ticket.id} className="rounded-xl border border-border bg-surface px-3 py-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className={`font-black ${ui.text}`}>{formatQueueNumber(ticket.number)}</p>
-                      <p className={`mt-1 truncate text-sm font-bold ${ui.text}`}>{ticket.visitorName}</p>
+                      <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+                      <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{ticket.visitorName}</p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-400/15 text-emerald-200'}`}>
+                    <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-700">
                       Siap Operator
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-                    <div className={`rounded-xl px-3 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
-                      <p className={`font-black uppercase tracking-[0.14em] ${ui.faint}`}>Asal Sekolah</p>
-                      <p className={`mt-1 font-bold ${ui.text}`}>{ticket.originSchool || '-'}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                    <div className="rounded-lg bg-card px-2 py-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted">Asal Sekolah</p>
+                      <p className="truncate font-bold text-foreground">{ticket.originSchool || '—'}</p>
                     </div>
-                    <div className={`rounded-xl px-3 py-2 ${isLight ? 'bg-white' : 'bg-black/20'}`}>
-                      <p className={`font-black uppercase tracking-[0.14em] ${ui.faint}`}>Jalur</p>
-                      <p className={`mt-1 font-bold ${ui.text}`}>{ticket.registrationPath || '-'}</p>
+                    <div className="rounded-lg bg-card px-2 py-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted">Jalur</p>
+                      <p className="truncate font-bold text-foreground">{ticket.registrationPath || '—'}</p>
                     </div>
                   </div>
                 </div>
               )) : (
-                <div className={`rounded-2xl border px-4 py-6 text-center text-sm font-bold ${ui.subPanel} ${ui.muted}`}>
-                  Belum ada data verifikasi yang dikirim ke operator.
+                <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
+                  Belum ada data verifikasi terkirim ke operator.
                 </div>
               )}
             </div>
           </div>
 
-          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Realtime Graph</h2>
-            <div className="mt-4 h-56">
-              {chartReady ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <AreaChart data={snapshot.analytics.hourlyTraffic}>
-                    <defs>
-                      <linearGradient id="queueTotal" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.65} />
-                        <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke={ui.graphGrid} vertical={false} />
-                    <XAxis dataKey="hour" stroke="#64748b" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#64748b" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ ...ui.tooltip, borderRadius: 16 }} />
-                    <Area type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={3} fill="url(#queueTotal)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : null}
-            </div>
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setShowHistory((current) => !current)}
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Histori Panggilan</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">14 panggilan terakhir hari ini.</p>
+              </div>
+              <ChevronDown size={16} className={`text-muted transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+            </button>
+            {showHistory ? (
+              <div className="mt-3 max-h-[340px] space-y-2 overflow-y-auto pr-1">
+                {recentHistory.length ? recentHistory.map((ticket) => {
+                  const containerInfo = snapshot.containers.find((container) => container.id === ticket.containerId);
+                  const statusTone = ticket.status === 'DONE'
+                    ? 'bg-emerald-500/15 text-emerald-700'
+                    : ticket.status === 'SKIPPED'
+                      ? 'bg-rose-500/15 text-rose-700'
+                      : 'bg-cyan-500/15 text-cyan-700';
+                  return (
+                    <div key={ticket.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+                        <p className="truncate text-[11px] font-semibold text-muted-foreground">
+                          {ticket.visitorName} · {containerInfo?.name ?? ticket.containerId}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${statusTone}`}>
+                        {ticket.status}
+                      </span>
+                    </div>
+                  );
+                }) : (
+                  <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
+                    Belum ada histori panggilan.
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
 
-          <div className={`rounded-3xl border p-5 shadow-xl backdrop-blur-xl ${ui.panel}`}>
-            <h2 className={`text-sm font-black uppercase tracking-[0.22em] ${ui.muted}`}>Live Queue</h2>
-            <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-1">
-              {snapshot.tickets.slice(0, 14).map((ticket) => (
-                <div key={ticket.id} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${ui.subPanel}`}>
-                  <div>
-                    <p className={`font-black ${ui.text}`}>{formatQueueNumber(ticket.number)}</p>
-                    <p className={`text-xs ${ui.muted}`}>{ticket.visitorName} - {ticket.serviceChoice ?? formatQueueService(ticket.service)}</p>
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Live Queue</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">Tiket masuk terbaru.</p>
+            <div className="mt-3 max-h-[280px] space-y-2 overflow-y-auto pr-1">
+              {snapshot.tickets.slice(0, 12).map((ticket) => (
+                <div key={ticket.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+                    <p className="truncate text-[11px] font-semibold text-muted-foreground">
+                      {ticket.visitorName} · {ticket.serviceChoice ?? formatQueueService(ticket.service)}
+                    </p>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-[10px] font-black ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-white/10 text-slate-300'}`}>{ticket.status}</span>
+                  <span className="shrink-0 rounded-full bg-card-hover px-2 py-0.5 text-[10px] font-black text-muted-foreground">
+                    {ticket.status}
+                  </span>
                 </div>
               ))}
+              {!snapshot.tickets.length ? (
+                <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
+                  Belum ada tiket hari ini.
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
       </div>
+
+      <ContainerSettingsDrawer
+        open={settingsOpen}
+        draft={containerDraft}
+        busy={settingsBusy}
+        message={settingsMessage}
+        onClose={() => setSettingsOpen(false)}
+        onChange={changeContainerDraft}
+        onCountChange={changeContainerCount}
+        onRemove={removeContainerDraft}
+        onSave={saveContainers}
+      />
+
+      <AnimatePresence>
+        {actionFeedback ? (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            className={`pointer-events-none fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black shadow-2xl lg:bottom-6 ${
+              actionFeedback.tone === 'ok'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-rose-500 text-white'
+            }`}
+          >
+            {actionFeedback.tone === 'ok' ? <CheckCircle2 size={16} /> : <ChevronRight size={16} />}
+            {actionFeedback.text}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

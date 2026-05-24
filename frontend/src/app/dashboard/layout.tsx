@@ -8,6 +8,7 @@ import {
   LayoutGrid, Package, Wallet, GraduationCap, Users, FileText,
   LogOut, UserCog, ShieldAlert, Sun, Moon, Palette, KeyRound,
   Settings, MoreHorizontal, AArrowUp, AArrowDown, Type, RadioTower,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type Theme } from '@/lib/theme';
@@ -55,6 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showDefaultPwWarning, setShowDefaultPwWarning] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large'>('normal');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   const FONT_SIZES = [
     { value: 'small' as const, label: 'Kecil', icon: AArrowDown },
@@ -80,7 +82,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (savedFontSize && ['small', 'normal', 'large'].includes(savedFontSize)) {
       setFontSize(savedFontSize);
     }
+    const savedSidebar = localStorage.getItem('smavo_sidebar_collapsed');
+    if (savedSidebar === 'false') {
+      setSidebarCollapsed(false);
+    } else {
+      setSidebarCollapsed(true);
+    }
   }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem('smavo_sidebar_collapsed', next ? 'true' : 'false');
+      return next;
+    });
+  };
 
   // Auth & route guard: runs on every pathname change
   useEffect(() => {
@@ -138,52 +154,95 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* ── Desktop Sidebar ── */}
-      <aside className="fixed inset-y-0 left-0 z-40 w-[220px] sidebar-surface border-r border-border flex-col transition-transform duration-300 lg:translate-x-0 lg:static hidden lg:flex">
-        <div className="flex items-center gap-2.5 px-4 h-14 shrink-0 border-b border-border">
-          <Image src="/logo-smavo.jpeg" alt="SMAVO" width={32} height={32} className="w-8 h-8 rounded-lg object-cover shadow-md" />
-          <div className="flex-1">
-            <span className="text-foreground font-bold text-sm tracking-tight leading-none">SMAVO</span>
-            <span className="block text-[10px] text-muted tracking-[0.15em] uppercase leading-none mt-0.5">SMAN 2 Cibinong</span>
-          </div>
-
+      <aside
+        className={cn(
+          'relative inset-y-0 left-0 z-40 sidebar-surface border-r border-border flex-col transition-[width] duration-300 ease-out lg:translate-x-0 lg:static hidden lg:flex shrink-0 overflow-hidden',
+          sidebarCollapsed ? 'w-[68px]' : 'w-[220px]'
+        )}
+      >
+        <div className={cn('flex items-center h-14 shrink-0 border-b border-border', sidebarCollapsed ? 'justify-center px-2' : 'gap-2.5 px-4')}>
+          <Image src="/logo-smavo.jpeg" alt="SMAVO" width={32} height={32} className="w-8 h-8 rounded-lg object-cover shadow-md shrink-0" />
+          {!sidebarCollapsed && (
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <span className="text-foreground font-bold text-sm tracking-tight leading-none truncate block">SMAVO</span>
+              <span className="block text-[10px] text-muted tracking-[0.15em] uppercase leading-none mt-0.5 truncate">SMAN 2 Cibinong</span>
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 px-2 pt-3 pb-3 space-y-0.5 overflow-y-auto">
-          <p className="px-3 mb-1.5 text-[9px] font-semibold text-muted uppercase tracking-widest">Menu</p>
+        <nav className="flex-1 pt-3 pb-3 space-y-1 overflow-y-auto px-2">
+          {!sidebarCollapsed && (
+            <p className="px-3 mb-1.5 text-[9px] font-semibold text-muted uppercase tracking-widest">Menu</p>
+          )}
           {filteredNav.map((item) => {
             const active = pathname === item.href;
             return (
-              <Link key={item.name} href={item.href}
+              <Link
+                key={item.name}
+                href={item.href}
+                title={sidebarCollapsed ? item.name : undefined}
                 className={cn(
-                  'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-200',
+                  'relative flex items-center rounded-lg text-[12.5px] font-medium transition-all duration-200',
+                  sidebarCollapsed ? 'justify-center h-10 w-full' : 'gap-2.5 px-3 py-2',
                   active ? 'sidebar-nav-active' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]'
-                )}>
+                )}
+              >
                 {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-accent" />}
-                <item.icon size={17} strokeWidth={active ? 2 : 1.5} />
-                {item.name}
+                <item.icon size={sidebarCollapsed ? 19 : 17} strokeWidth={active ? 2 : 1.5} className="shrink-0" />
+                {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-2 py-2 border-t border-border">
-          <div className="flex items-center gap-2.5 px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg sidebar-user-avatar flex items-center justify-center shrink-0">
-              <span className="text-white text-[10px] font-bold">{initials}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground truncate">{user?.fullName || '...'}</p>
-              <p className="text-[10px] text-muted truncate capitalize">{user?.role?.toLowerCase().replace('_', ' ') || ''}</p>
-            </div>
-          </div>
-          <button onClick={() => setShowChangePassword(true)}
-            className="flex items-center gap-2 px-3 py-1.5 w-full rounded-lg text-[12px] text-muted hover:text-accent hover:bg-accent-muted transition-all">
-            <KeyRound size={15} /> Ubah Password
-          </button>
-          <button onClick={logout}
-            className="flex items-center gap-2 px-3 py-1.5 w-full rounded-lg text-[12px] text-muted hover:text-danger hover:bg-danger-muted transition-all">
-            <LogOut size={15} /> Keluar
-          </button>
+        <div className="px-2 py-2 border-t border-border space-y-1">
+          {sidebarCollapsed ? (
+            <>
+              <div className="flex items-center justify-center py-1.5" title={user?.fullName || ''}>
+                <div className="w-8 h-8 rounded-lg sidebar-user-avatar flex items-center justify-center shrink-0">
+                  <span className="text-white text-[10px] font-bold">{initials}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowChangePassword(true)}
+                title="Ubah Password"
+                className="flex h-9 w-full items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent-muted transition-all"
+              >
+                <KeyRound size={16} />
+              </button>
+              <button
+                onClick={logout}
+                title="Keluar"
+                className="flex h-9 w-full items-center justify-center rounded-lg text-muted hover:text-danger hover:bg-danger-muted transition-all"
+              >
+                <LogOut size={16} />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2.5 px-3 py-1.5">
+                <div className="w-7 h-7 rounded-lg sidebar-user-avatar flex items-center justify-center shrink-0">
+                  <span className="text-white text-[10px] font-bold">{initials}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{user?.fullName || '...'}</p>
+                  <p className="text-[10px] text-muted truncate capitalize">{user?.role?.toLowerCase().replace('_', ' ') || ''}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowChangePassword(true)}
+                className="flex items-center gap-2 px-3 py-1.5 w-full rounded-lg text-[12px] text-muted hover:text-accent hover:bg-accent-muted transition-all"
+              >
+                <KeyRound size={15} /> Ubah Password
+              </button>
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 px-3 py-1.5 w-full rounded-lg text-[12px] text-muted hover:text-danger hover:bg-danger-muted transition-all"
+              >
+                <LogOut size={15} /> Keluar
+              </button>
+            </>
+          )}
         </div>
       </aside>
 
@@ -202,7 +261,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-sm font-semibold text-foreground truncate leading-tight">{user?.fullName?.split(' ')[0] || '...'}</p>
             </div>
           </div>
-          {/* Desktop: page title */}
+          {/* Desktop: toggle + page title */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={sidebarCollapsed ? 'Buka Sidebar' : 'Tutup Sidebar'}
+            className="hidden lg:inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted hover:text-foreground hover:bg-foreground/[0.05] transition-all"
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
           <h1 className="text-sm font-semibold text-foreground hidden lg:block">{title}</h1>
           <div className="flex-1" />
 
