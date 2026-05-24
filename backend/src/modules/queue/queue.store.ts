@@ -33,6 +33,8 @@ export type QueueTicket = {
   calledAt?: string;
   finishedAt?: string;
   skippedAt?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
   estimatedWaitMinutes: number;
 };
 
@@ -90,6 +92,7 @@ const queueStateFile = process.env.QUEUE_STATE_FILE || path.join(process.cwd(), 
 const QUEUE_SERVICES = {
   verification: 'Verifikasi Berkas',
   information: 'Informasi',
+  operator: 'Operator',
 };
 
 let containers: QueueContainer[] = [
@@ -248,8 +251,13 @@ function getTicketSequence(ticket: QueueTicket) {
 }
 
 function compareQueueOrder(a: QueueTicket, b: QueueTicket) {
-  const createdDiff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-  if (createdDiff !== 0) return createdDiff;
+  // For re-queued tickets (post-verifikasi) the verifiedAt timestamp drives the
+  // operator queue order. Original verifikasi/informasi tickets fall back to
+  // createdAt so the existing flow is preserved.
+  const aTime = a.verifiedAt ?? a.createdAt;
+  const bTime = b.verifiedAt ?? b.createdAt;
+  const timeDiff = new Date(aTime).getTime() - new Date(bTime).getTime();
+  if (timeDiff !== 0) return timeDiff;
   return getTicketSequence(a) - getTicketSequence(b);
 }
 
@@ -475,6 +483,32 @@ export function completeTicket(containerId: string) {
   const active = activeFor(containerId);
   if (!container || !active) return null;
 
+  const isVerification = normalizeService(active.service) === normalizeService(QUEUE_SERVICES.verification);
+
+  if (isVerification) {
+    // Verifikasi selesai → ticket kembali ke pool menunggu, lalu dipanggil
+    // oleh loket Operator yang dibuat admin. Tidak ditandai DONE supaya bisa
+    // diambil ulang via callNextTicket pada container ber-service Operator.
+    const verifiedAt = nowIso();
+    const verified = updateTicket(active.id, {
+      status: 'WAITING',
+      service: QUEUE_SERVICES.operator,
+      verifiedAt,
+      verifiedBy: container.name,
+      calledAt: undefined,
+      finishedAt: undefined,
+    });
+    if (!verified) return null;
+    addEvent({
+      type: 'DONE',
+      ticketNumber: verified.number,
+      containerId,
+      message: `${verified.number} selesai verifikasi di ${container.name}, menunggu panggilan operator`,
+    });
+    persistQueueState();
+    return verified;
+  }
+
   const completed = finishActiveTicket(containerId);
   if (!completed) return null;
 
@@ -482,9 +516,7 @@ export function completeTicket(containerId: string) {
     type: 'DONE',
     ticketNumber: completed.number,
     containerId,
-    message: normalizeService(completed.service) === normalizeService(QUEUE_SERVICES.verification)
-      ? `${completed.number} selesai verifikasi, data diteruskan ke operator`
-      : `${completed.number} selesai dilayani di ${container.name}`,
+    message: `${completed.number} selesai dilayani di ${container.name}`,
   });
   persistQueueState();
   return completed;

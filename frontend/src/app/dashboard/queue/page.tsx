@@ -89,6 +89,18 @@ const voiceStyleOptions: { value: QueueVoiceStyle; label: string }[] = [
   { value: 'formal', label: 'Formal' },
 ];
 
+const SERVICE_PRESETS = [
+  { value: 'Verifikasi Berkas', label: 'Verifikasi Berkas', hint: 'Loket awal pemeriksaan dokumen.' },
+  { value: 'Operator', label: 'Operator', hint: 'Memanggil user yang sudah selesai verifikasi.' },
+  { value: 'Informasi', label: 'Informasi', hint: 'Loket layanan informasi umum.' },
+];
+
+const isOperatorService = (service?: string | null) =>
+  formatQueueService(service).trim().toLowerCase() === 'operator';
+
+const isVerificationService = (service?: string | null) =>
+  formatQueueService(service).toLowerCase().includes('verifikasi');
+
 function toContainerConfig(container: QueueContainer): QueueContainerConfig {
   return {
     id: container.id,
@@ -231,8 +243,9 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
   const hasWaiting = container.waitingCount > 0;
-  const isVerification = formatQueueService(active?.service).toLowerCase().includes('verifikasi');
-  const finishLabel = isVerification ? 'Kirim ke Operator' : 'Selesaikan';
+  const containerIsVerif = isVerificationService(container.service);
+  const containerIsOperator = isOperatorService(container.service);
+  const finishLabel = containerIsVerif ? 'Kirim ke Operator' : containerIsOperator ? 'Selesai Layanan' : 'Selesaikan';
 
   return (
     <motion.div
@@ -294,6 +307,11 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
           <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">
             {active.originSchool || '—'} {active.registrationPath ? `· ${active.registrationPath}` : ''}
           </p>
+          {containerIsOperator && active.verifiedBy ? (
+            <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+              ✓ Diverifikasi oleh {active.verifiedBy}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -364,8 +382,9 @@ type ActiveCallHeroProps = {
 function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroProps) {
   const active = container?.activeTicket ?? null;
   const accent = accentMap[container?.accent ?? 'cyan'] ?? accentMap.cyan;
-  const isVerification = formatQueueService(active?.service).toLowerCase().includes('verifikasi');
-  const finishLabel = isVerification ? 'Kirim ke Operator' : 'Selesaikan Layanan';
+  const containerIsVerif = isVerificationService(container?.service);
+  const containerIsOperator = isOperatorService(container?.service);
+  const finishLabel = containerIsVerif ? 'Kirim ke Operator' : containerIsOperator ? 'Selesaikan Layanan' : 'Selesaikan Layanan';
   const hasWaiting = (container?.waitingCount ?? 0) > 0;
 
   return (
@@ -415,8 +434,14 @@ function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroPr
                 <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.registrationPath || '—'}</p>
               </div>
               <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Layanan</p>
-                <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.serviceChoice ?? formatQueueService(active.service)}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                  {containerIsOperator ? 'Diverifikasi oleh' : 'Layanan'}
+                </p>
+                <p className="mt-0.5 truncate text-sm font-black text-foreground">
+                  {containerIsOperator
+                    ? (active.verifiedBy || 'Verifikator')
+                    : (active.serviceChoice ?? formatQueueService(active.service))}
+                </p>
               </div>
             </div>
           ) : (
@@ -544,6 +569,15 @@ function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange
                 Ubah jumlah loket, nama, layanan, kode prefix, petugas, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
               </p>
 
+              <div className="rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-xs text-muted-foreground">
+                <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-accent">Alur Antrean</p>
+                <ol className="list-decimal space-y-0.5 pl-4">
+                  <li><span className="font-black text-foreground">Verifikasi Berkas</span> — loket pertama, memeriksa dokumen calon peserta.</li>
+                  <li><span className="font-black text-foreground">Operator</span> — memanggil ulang user yang sudah selesai verifikasi.</li>
+                  <li><span className="font-black text-foreground">Informasi</span> — loket independen untuk layanan informasi.</li>
+                </ol>
+              </div>
+
               <div className="space-y-3">
                 {draft.map((container, index) => (
                   <div key={`${container.id}-${index}`} className="rounded-2xl border border-border bg-surface p-3">
@@ -559,12 +593,22 @@ function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange
                       </label>
                       <label className="min-w-0">
                         <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Layanan</span>
-                        <input
-                          value={container.service}
+                        <select
+                          value={
+                            SERVICE_PRESETS.some((preset) => preset.value.toLowerCase() === container.service.trim().toLowerCase())
+                              ? SERVICE_PRESETS.find((preset) => preset.value.toLowerCase() === container.service.trim().toLowerCase())!.value
+                              : container.service
+                          }
                           onChange={(event) => onChange(index, { service: event.target.value })}
                           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold text-foreground outline-none focus:border-accent/60"
-                          placeholder="Verifikasi Berkas"
-                        />
+                        >
+                          {SERVICE_PRESETS.map((preset) => (
+                            <option key={preset.value} value={preset.value}>{preset.label}</option>
+                          ))}
+                          {SERVICE_PRESETS.every((preset) => preset.value.toLowerCase() !== container.service.trim().toLowerCase()) && container.service.trim() ? (
+                            <option value={container.service}>{container.service} (custom)</option>
+                          ) : null}
+                        </select>
                       </label>
                       <label className="min-w-0">
                         <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Kode</span>
@@ -692,11 +736,17 @@ export default function QueueDashboardPage() {
     [snapshot.tickets]
   );
 
-  const operatorData = useMemo(
+  const operatorWaiting = useMemo(
     () => snapshot.tickets
-      .filter((ticket) => ticket.status === 'DONE' && formatQueueService(ticket.service).toLowerCase().includes('verifikasi'))
-      .slice(0, 10),
+      .filter((ticket) => ticket.status === 'WAITING' && isOperatorService(ticket.service))
+      .sort((a, b) => new Date(a.verifiedAt ?? a.createdAt).getTime() - new Date(b.verifiedAt ?? b.createdAt).getTime())
+      .slice(0, 12),
     [snapshot.tickets]
+  );
+
+  const operatorContainersCount = useMemo(
+    () => snapshot.containers.filter((container) => isOperatorService(container.service)).length,
+    [snapshot.containers]
   );
 
   const audioOptions = useMemo<QueueVoiceOptions>(() => ({
@@ -816,7 +866,7 @@ export default function QueueDashboardPage() {
           </div>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-foreground lg:text-3xl">Command Center Antrean</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Panggil dan kelola antrean Verifikasi Berkas dan Informasi secara realtime.
+            Panggil dan kelola alur antrean Verifikasi → Operator dan layanan Informasi secara realtime.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -928,15 +978,24 @@ export default function QueueDashboardPage() {
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Data Operator</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">User SPMB yang sudah selesai verifikasi.</p>
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Menunggu Operator</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  User yang sudah selesai verifikasi dan menunggu dipanggil oleh loket Operator.
+                </p>
               </div>
-              <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-black text-emerald-700">
-                {operatorData.length} data
+              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${
+                operatorWaiting.length ? 'bg-emerald-500/15 text-emerald-700' : 'bg-card-hover text-muted-foreground'
+              }`}>
+                {operatorWaiting.length} antre
               </span>
             </div>
-            <div className="mt-3 max-h-[300px] space-y-2 overflow-y-auto pr-1">
-              {operatorData.length ? operatorData.map((ticket) => (
+            {operatorContainersCount === 0 ? (
+              <div className="mt-3 rounded-xl border border-amber-300/40 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">
+                Belum ada loket <span className="font-black">Operator</span> aktif. Buka pengaturan loket untuk membuatnya.
+              </div>
+            ) : null}
+            <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
+              {operatorWaiting.length ? operatorWaiting.map((ticket) => (
                 <div key={ticket.id} className="rounded-xl border border-border bg-surface px-3 py-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -944,7 +1003,7 @@ export default function QueueDashboardPage() {
                       <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{ticket.visitorName}</p>
                     </div>
                     <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-700">
-                      Siap Operator
+                      Verifikasi OK
                     </span>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
@@ -957,10 +1016,15 @@ export default function QueueDashboardPage() {
                       <p className="truncate font-bold text-foreground">{ticket.registrationPath || '—'}</p>
                     </div>
                   </div>
+                  {ticket.verifiedBy ? (
+                    <p className="mt-1.5 truncate text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+                      ✓ Diverifikasi {ticket.verifiedBy}
+                    </p>
+                  ) : null}
                 </div>
               )) : (
                 <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
-                  Belum ada data verifikasi terkirim ke operator.
+                  Belum ada user menunggu panggilan operator.
                 </div>
               )}
             </div>
@@ -1013,19 +1077,26 @@ export default function QueueDashboardPage() {
             <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Live Queue</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">Tiket masuk terbaru.</p>
             <div className="mt-3 max-h-[280px] space-y-2 overflow-y-auto pr-1">
-              {snapshot.tickets.slice(0, 12).map((ticket) => (
-                <div key={ticket.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
-                    <p className="truncate text-[11px] font-semibold text-muted-foreground">
-                      {ticket.visitorName} · {ticket.serviceChoice ?? formatQueueService(ticket.service)}
-                    </p>
+              {snapshot.tickets.slice(0, 12).map((ticket) => {
+                const stage = isOperatorService(ticket.service)
+                  ? 'Operator'
+                  : isVerificationService(ticket.service)
+                    ? 'Verifikasi'
+                    : formatQueueService(ticket.service);
+                return (
+                  <div key={ticket.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+                      <p className="truncate text-[11px] font-semibold text-muted-foreground">
+                        {ticket.visitorName} · {stage}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-card-hover px-2 py-0.5 text-[10px] font-black text-muted-foreground">
+                      {ticket.status}
+                    </span>
                   </div>
-                  <span className="shrink-0 rounded-full bg-card-hover px-2 py-0.5 text-[10px] font-black text-muted-foreground">
-                    {ticket.status}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
               {!snapshot.tickets.length ? (
                 <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
                   Belum ada tiket hari ini.

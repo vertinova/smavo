@@ -16,6 +16,8 @@ export type QueueTicket = {
   calledAt?: string;
   finishedAt?: string;
   skippedAt?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
   estimatedWaitMinutes: number;
 };
 
