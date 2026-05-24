@@ -538,6 +538,18 @@ export function skipTicket(containerId: string) {
   return skipped;
 }
 
+export function resetQueueState() {
+  tickets = [];
+  events = [];
+  counters.clear();
+  addEvent({
+    type: 'RESUMED',
+    message: 'Semua nomor antrean direset oleh admin',
+  });
+  persistQueueState();
+  return getQueueSnapshot();
+}
+
 export function setContainerPaused(containerId: string, paused: boolean) {
   const container = containers.find((item) => item.id === containerId);
   if (!container) return null;

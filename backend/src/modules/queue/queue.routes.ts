@@ -8,6 +8,7 @@ import {
   createQueueTicket,
   getQueueSnapshot,
   recallTicket,
+  resetQueueState,
   setContainerPaused,
   skipTicket,
   updateQueueContainers,
@@ -142,6 +143,16 @@ router.post('/containers/:id/skip', authenticate, authorize('ADMIN', 'STAF_TU'),
 router.post('/containers/:id/pause', authenticate, authorize('ADMIN', 'STAF_TU'), (req, res, next) => {
   try {
     handleAction(setContainerPaused(getParamId(req), Boolean(req.body?.paused)), res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/reset', authenticate, authorize('ADMIN'), (_req, res, next) => {
+  try {
+    const snapshot = resetQueueState();
+    broadcastQueueState();
+    res.json({ success: true, snapshot });
   } catch (err) {
     next(err);
   }

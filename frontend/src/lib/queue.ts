@@ -124,6 +124,11 @@ export async function updateQueueContainers(containers: QueueContainerConfig[]) 
   return data;
 }
 
+export async function resetQueueState() {
+  const { data } = await api.post<{ success: boolean; snapshot: QueueSnapshot }>('/queue/reset');
+  return data;
+}
+
 export function formatQueueNumber(number?: string | null) {
   return (number ?? '').replace(/^PPDB-/i, 'SPMB-');
 }

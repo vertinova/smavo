@@ -4,20 +4,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock3,
   FileSpreadsheet,
+  Info,
+  ListChecks,
   Loader2,
   Megaphone,
   MonitorUp,
   Pause,
   Play,
+  Plus,
   RadioTower,
   RotateCcw,
   Save,
   Settings2,
+  ShieldCheck,
   SkipForward,
   Sparkles,
   Trash2,
@@ -30,6 +35,7 @@ import {
   formatQueueNumber,
   formatQueueService,
   queueAction,
+  resetQueueState,
   speakQueueCall,
   unlockQueueAudio,
   updateQueueContainers,
@@ -95,11 +101,16 @@ const SERVICE_PRESETS = [
   { value: 'Informasi', label: 'Informasi', hint: 'Loket layanan informasi umum.' },
 ];
 
+const MAX_CONTAINERS = 12;
+
 const isOperatorService = (service?: string | null) =>
   formatQueueService(service).trim().toLowerCase() === 'operator';
 
 const isVerificationService = (service?: string | null) =>
   formatQueueService(service).toLowerCase().includes('verifikasi');
+
+const isInformationService = (service?: string | null) =>
+  formatQueueService(service).trim().toLowerCase() === 'informasi';
 
 function toContainerConfig(container: QueueContainer): QueueContainerConfig {
   return {
@@ -113,14 +124,17 @@ function toContainerConfig(container: QueueContainer): QueueContainerConfig {
   };
 }
 
-function makeNewContainer(index: number): QueueContainerConfig {
+function makeNewContainer(index: number, service: string = 'Verifikasi Berkas'): QueueContainerConfig {
   const number = index + 1;
+  const isOp = service.toLowerCase() === 'operator';
+  const isInfo = service.toLowerCase() === 'informasi';
+  const baseName = isOp ? 'Operator' : isInfo ? 'Informasi' : 'Verifikator';
   return {
-    id: `verifikator-${number}`,
-    name: `Verifikator ${number}`,
-    service: 'Verifikasi Berkas',
+    id: `${baseName.toLowerCase()}-${number}-${Date.now().toString(36)}`,
+    name: `${baseName} ${number}`,
+    service,
     code: 'SPMB',
-    operator: `Verifikator ${number}`,
+    operator: `${baseName} ${number}`,
     isPaused: false,
     accent: accentOptions[index % accentOptions.length].value,
   };
@@ -229,12 +243,14 @@ function StatCard({ label, value, icon: Icon, hint, tone }: StatCardProps) {
   );
 }
 
+type ContainerAction = 'call' | 'next' | 'recall' | 'done' | 'skip';
+
 type ContainerCardProps = {
   container: QueueContainer;
   isSelected: boolean;
   busy: boolean;
   onSelect: (id: string) => void;
-  onAction: (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => void;
+  onAction: (containerId: string, action: ContainerAction) => void;
   onPause: (containerId: string, paused: boolean) => void;
   onSpeak: (container: QueueContainer) => void;
 };
@@ -243,9 +259,7 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
   const hasWaiting = container.waitingCount > 0;
-  const containerIsVerif = isVerificationService(container.service);
   const containerIsOperator = isOperatorService(container.service);
-  const finishLabel = containerIsVerif ? 'Kirim ke Operator' : containerIsOperator ? 'Selesai Layanan' : 'Selesaikan';
 
   return (
     <motion.div
@@ -331,7 +345,7 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
           className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-black text-white shadow-md transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
         >
           <CheckCircle2 size={14} />
-          {finishLabel}
+          Selesai
         </button>
         <div className="col-span-2 grid grid-cols-3 gap-2">
           <button
@@ -375,16 +389,14 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
 type ActiveCallHeroProps = {
   container: QueueContainer | null;
   busy: boolean;
-  onAction: (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => void;
+  onAction: (containerId: string, action: ContainerAction) => void;
   onSpeak: (container: QueueContainer) => void;
 };
 
 function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroProps) {
   const active = container?.activeTicket ?? null;
   const accent = accentMap[container?.accent ?? 'cyan'] ?? accentMap.cyan;
-  const containerIsVerif = isVerificationService(container?.service);
   const containerIsOperator = isOperatorService(container?.service);
-  const finishLabel = containerIsVerif ? 'Kirim ke Operator' : containerIsOperator ? 'Selesaikan Layanan' : 'Selesaikan Layanan';
   const hasWaiting = (container?.waitingCount ?? 0) > 0;
 
   return (
@@ -466,7 +478,7 @@ function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroPr
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 lg:py-4 lg:text-base"
           >
             <CheckCircle2 size={18} />
-            {finishLabel}
+            Selesai
           </button>
           <div className="flex w-full gap-2">
             <button
@@ -497,19 +509,220 @@ function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroPr
   );
 }
 
+type WaitingChipProps = {
+  ticket: QueueTicket;
+  highlightVerified?: boolean;
+};
+
+function WaitingChip({ ticket, highlightVerified }: WaitingChipProps) {
+  return (
+    <div className="rounded-xl border border-border bg-surface px-3 py-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+          <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{ticket.visitorName}</p>
+        </div>
+        {highlightVerified ? (
+          <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-700">
+            Verifikasi OK
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] font-bold text-muted-foreground">
+        {ticket.originSchool ? (
+          <span className="rounded-md bg-card px-1.5 py-0.5">{ticket.originSchool}</span>
+        ) : null}
+        {ticket.registrationPath ? (
+          <span className="rounded-md bg-card px-1.5 py-0.5">{ticket.registrationPath}</span>
+        ) : null}
+      </div>
+      {highlightVerified && ticket.verifiedBy ? (
+        <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+          ✓ Diverifikasi {ticket.verifiedBy}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+type RoleSectionProps = {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  tone: 'cyan' | 'emerald' | 'violet';
+  containers: QueueContainer[];
+  waitingTickets: QueueTicket[];
+  selectedContainerId: string;
+  busy: boolean;
+  highlightVerified?: boolean;
+  emptyMessage: string;
+  onSelect: (id: string) => void;
+  onAction: (containerId: string, action: ContainerAction) => void;
+  onPause: (containerId: string, paused: boolean) => void;
+  onSpeak: (container: QueueContainer) => void;
+  onOpenSettings: () => void;
+};
+
+const roleToneClasses: Record<RoleSectionProps['tone'], { ring: string; icon: string; chip: string }> = {
+  cyan: {
+    ring: 'ring-cyan-200',
+    icon: 'bg-cyan-500 text-white',
+    chip: 'bg-cyan-100 text-cyan-800 ring-cyan-200',
+  },
+  emerald: {
+    ring: 'ring-emerald-200',
+    icon: 'bg-emerald-500 text-white',
+    chip: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+  },
+  violet: {
+    ring: 'ring-violet-200',
+    icon: 'bg-violet-500 text-white',
+    chip: 'bg-violet-100 text-violet-800 ring-violet-200',
+  },
+};
+
+function RoleSection({
+  title,
+  description,
+  icon: Icon,
+  tone,
+  containers,
+  waitingTickets,
+  selectedContainerId,
+  busy,
+  highlightVerified,
+  emptyMessage,
+  onSelect,
+  onAction,
+  onPause,
+  onSpeak,
+  onOpenSettings,
+}: RoleSectionProps) {
+  const [open, setOpen] = useState(true);
+  const toneClasses = roleToneClasses[tone];
+  const activeCount = containers.filter((container) => !container.isPaused).length;
+
+  return (
+    <section className={`rounded-3xl border border-border bg-card shadow-sm ring-1 ${toneClasses.ring}`}>
+      <header className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className="flex flex-1 items-center gap-3 text-left"
+        >
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-sm ${toneClasses.icon}`}>
+            <Icon size={18} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-black text-foreground lg:text-lg">{title}</h2>
+            <p className="truncate text-xs font-semibold text-muted-foreground">{description}</p>
+          </div>
+          <ChevronDown size={18} className={`ml-auto shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-3 py-1 text-[11px] font-black ring-1 ${toneClasses.chip}`}>
+            {containers.length} loket · {activeCount} aktif
+          </span>
+          <span className={`rounded-full px-3 py-1 text-[11px] font-black ring-1 ${
+            waitingTickets.length ? toneClasses.chip : 'bg-card-hover text-muted-foreground ring-border'
+          }`}>
+            {waitingTickets.length} menunggu
+          </span>
+        </div>
+      </header>
+
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:px-5">
+              <div>
+                {containers.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                    {containers.map((container) => (
+                      <ContainerCard
+                        key={container.id}
+                        container={container}
+                        isSelected={container.id === selectedContainerId}
+                        busy={busy}
+                        onSelect={onSelect}
+                        onAction={onAction}
+                        onPause={onPause}
+                        onSpeak={onSpeak}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-border bg-surface px-4 py-6">
+                    <p className="text-sm font-bold text-foreground">Belum ada loket {title.toLowerCase()}.</p>
+                    <p className="text-xs text-muted-foreground">{emptyMessage}</p>
+                    <button
+                      type="button"
+                      onClick={onOpenSettings}
+                      className="inline-flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-accent-hover"
+                    >
+                      <Settings2 size={13} /> Buka Pengaturan Loket
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-2xl border border-border bg-surface p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted">Antrean Menunggu</h3>
+                  <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-black text-foreground">
+                    {waitingTickets.length}
+                  </span>
+                </div>
+                <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                  {waitingTickets.length ? waitingTickets.map((ticket) => (
+                    <WaitingChip key={ticket.id} ticket={ticket} highlightVerified={highlightVerified} />
+                  )) : (
+                    <div className="rounded-xl border border-border bg-card px-3 py-6 text-center text-xs font-bold text-muted-foreground">
+                      Tidak ada antrean menunggu.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </section>
+  );
+}
+
 type ContainerSettingsDrawerProps = {
   open: boolean;
   draft: QueueContainerConfig[];
   busy: boolean;
   message: string;
+  dirty: boolean;
   onClose: () => void;
   onChange: (index: number, patch: Partial<QueueContainerConfig>) => void;
-  onCountChange: (count: number) => void;
+  onAdd: (service?: string) => void;
   onRemove: (index: number) => void;
+  onReset: () => void;
   onSave: () => void;
 };
 
-function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange, onCountChange, onRemove, onSave }: ContainerSettingsDrawerProps) {
+function ContainerSettingsDrawer({
+  open,
+  draft,
+  busy,
+  message,
+  dirty,
+  onClose,
+  onChange,
+  onAdd,
+  onRemove,
+  onReset,
+  onSave,
+}: ContainerSettingsDrawerProps) {
   return (
     <AnimatePresence>
       {open ? (
@@ -542,17 +755,23 @@ function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Jumlah Loket</p>
-                  <p className="text-2xl font-black text-foreground">{draft.length}</p>
+                  <p className="text-2xl font-black text-foreground">{draft.length} <span className="text-xs font-bold text-muted-foreground">/ {MAX_CONTAINERS}</span></p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={draft.length}
-                    onChange={(event) => onCountChange(Number(event.target.value))}
-                    className="w-20 rounded-xl border border-border bg-background px-3 py-2 text-center text-sm font-black text-foreground outline-none focus:border-accent/60"
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  {dirty ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800 ring-1 ring-amber-200">
+                      <AlertTriangle size={10} /> Belum disimpan
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={onReset}
+                    disabled={busy || !dirty}
+                    title="Batalkan perubahan, kembali ke konfigurasi tersimpan"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-card px-3 py-2 text-xs font-black text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <RotateCcw size={13} /> Batal
+                  </button>
                   <button
                     type="button"
                     disabled={busy}
@@ -565,23 +784,52 @@ function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange
                 </div>
               </div>
 
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Ubah jumlah loket, nama, layanan, kode prefix, petugas, dan warna tampilan. Kode dipakai sebagai prefix nomor antrean.
-              </p>
-
               <div className="rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-xs text-muted-foreground">
                 <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-accent">Alur Antrean</p>
                 <ol className="list-decimal space-y-0.5 pl-4">
-                  <li><span className="font-black text-foreground">Verifikasi Berkas</span> — loket pertama, memeriksa dokumen calon peserta.</li>
-                  <li><span className="font-black text-foreground">Operator</span> — memanggil ulang user yang sudah selesai verifikasi.</li>
-                  <li><span className="font-black text-foreground">Informasi</span> — loket independen untuk layanan informasi.</li>
+                  <li><span className="font-black text-foreground">Verifikasi Berkas</span> — loket pertama, memeriksa dokumen calon peserta. Setelah klik <span className="font-black">Selesai</span>, tiket otomatis masuk antrean Operator.</li>
+                  <li><span className="font-black text-foreground">Operator</span> — memanggil user yang sudah selesai verifikasi.</li>
+                  <li><span className="font-black text-foreground">Informasi</span> — loket independen untuk layanan informasi umum.</li>
                 </ol>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-widest text-muted">Tambah Loket:</span>
+                {SERVICE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    disabled={draft.length >= MAX_CONTAINERS}
+                    onClick={() => onAdd(preset.value)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-card px-3 py-1.5 text-[11px] font-black text-foreground ring-1 ring-border transition hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Plus size={12} /> {preset.label}
+                  </button>
+                ))}
+                {draft.length >= MAX_CONTAINERS ? (
+                  <span className="text-[11px] font-bold text-amber-700">Maksimum {MAX_CONTAINERS} loket.</span>
+                ) : null}
               </div>
 
               <div className="space-y-3">
                 {draft.map((container, index) => (
-                  <div key={`${container.id}-${index}`} className="rounded-2xl border border-border bg-surface p-3">
-                    <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_0.7fr_1fr_0.7fr_auto]">
+                  <div key={container.id} className="rounded-2xl border border-border bg-surface p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 text-[11px] font-black text-accent">{index + 1}</span>
+                        <span className="text-[11px] font-black uppercase tracking-widest text-muted">{formatQueueService(container.service)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={draft.length <= 1}
+                        onClick={() => onRemove(index)}
+                        className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-black text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`Hapus ${container.name}`}
+                      >
+                        <Trash2 size={12} /> Hapus
+                      </button>
+                    </div>
+                    <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_0.7fr_1fr_0.7fr]">
                       <label className="min-w-0">
                         <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-muted">Nama</span>
                         <input
@@ -640,15 +888,6 @@ function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange
                           ))}
                         </select>
                       </label>
-                      <button
-                        type="button"
-                        disabled={draft.length <= 1}
-                        onClick={() => onRemove(index)}
-                        className="flex h-[38px] w-full items-center justify-center self-end rounded-lg bg-rose-50 text-rose-600 ring-1 ring-rose-200 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40 lg:w-10"
-                        aria-label={`Hapus ${container.name}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -659,6 +898,69 @@ function ContainerSettingsDrawer({ open, draft, busy, message, onClose, onChange
                   {message}
                 </div>
               ) : null}
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+type ResetConfirmDialogProps = {
+  open: boolean;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+function ResetConfirmDialog({ open, busy, onCancel, onConfirm }: ResetConfirmDialogProps) {
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+          onClick={onCancel}
+        >
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0, y: 8 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.94, opacity: 0, y: 8 }}
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl ring-1 ring-border"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                <AlertTriangle size={22} />
+              </span>
+              <div>
+                <h3 className="text-lg font-black text-foreground">Reset Semua Nomor Antrean?</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Semua tiket hari ini, histori panggilan, dan counter nomor akan dihapus. Loket dan petugas tetap sama, tapi nomor antrean akan mulai dari <span className="font-black">001</span> lagi.
+                </p>
+                <p className="mt-2 text-xs font-bold text-rose-700">Tindakan ini tidak dapat dibatalkan.</p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={busy}
+                className="rounded-xl bg-surface px-4 py-2 text-sm font-black text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={busy}
+                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-black text-white shadow-md transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60"
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                {busy ? 'Mereset...' : 'Ya, Reset Semua'}
+              </button>
             </div>
           </motion.div>
         </motion.div>
@@ -680,7 +982,10 @@ export default function QueueDashboardPage() {
   const [selectedContainerId, setSelectedContainerId] = useState('');
   const [containerDraft, setContainerDraft] = useState<QueueContainerConfig[]>([]);
   const [actionFeedback, setActionFeedback] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
-  const [showHistory, setShowHistory] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showLiveQueue, setShowLiveQueue] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -729,10 +1034,26 @@ export default function QueueDashboardPage() {
     [selectedContainerId, snapshot.containers]
   );
 
-  const recentHistory = useMemo(
+  const verifContainers = useMemo(
+    () => snapshot.containers.filter((container) => isVerificationService(container.service)),
+    [snapshot.containers]
+  );
+
+  const operatorContainers = useMemo(
+    () => snapshot.containers.filter((container) => isOperatorService(container.service)),
+    [snapshot.containers]
+  );
+
+  const informationContainers = useMemo(
+    () => snapshot.containers.filter((container) => isInformationService(container.service)),
+    [snapshot.containers]
+  );
+
+  const verifWaiting = useMemo(
     () => snapshot.tickets
-      .filter((ticket) => ['DONE', 'SKIPPED', 'CALLING', 'SERVING'].includes(ticket.status))
-      .slice(0, 14),
+      .filter((ticket) => ticket.status === 'WAITING' && isVerificationService(ticket.service))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .slice(0, 20),
     [snapshot.tickets]
   );
 
@@ -740,13 +1061,23 @@ export default function QueueDashboardPage() {
     () => snapshot.tickets
       .filter((ticket) => ticket.status === 'WAITING' && isOperatorService(ticket.service))
       .sort((a, b) => new Date(a.verifiedAt ?? a.createdAt).getTime() - new Date(b.verifiedAt ?? b.createdAt).getTime())
-      .slice(0, 12),
+      .slice(0, 20),
     [snapshot.tickets]
   );
 
-  const operatorContainersCount = useMemo(
-    () => snapshot.containers.filter((container) => isOperatorService(container.service)).length,
-    [snapshot.containers]
+  const informationWaiting = useMemo(
+    () => snapshot.tickets
+      .filter((ticket) => ticket.status === 'WAITING' && isInformationService(ticket.service))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .slice(0, 20),
+    [snapshot.tickets]
+  );
+
+  const recentHistory = useMemo(
+    () => snapshot.tickets
+      .filter((ticket) => ['DONE', 'SKIPPED', 'CALLING', 'SERVING'].includes(ticket.status))
+      .slice(0, 14),
+    [snapshot.tickets]
   );
 
   const audioOptions = useMemo<QueueVoiceOptions>(() => ({
@@ -760,7 +1091,7 @@ export default function QueueDashboardPage() {
     feedbackTimer.current = setTimeout(() => setActionFeedback(null), 2400);
   };
 
-  const runAction = async (containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') => {
+  const runAction = async (containerId: string, action: ContainerAction) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -769,7 +1100,7 @@ export default function QueueDashboardPage() {
       if (container?.activeTicket && ['call', 'next', 'recall'].includes(action)) {
         speakQueueCall(container.activeTicket, container, audioOptions);
       }
-      const labels: Record<typeof action, string> = {
+      const labels: Record<ContainerAction, string> = {
         call: 'Nomor berikutnya dipanggil',
         next: 'Nomor berikutnya dipanggil',
         recall: 'Nomor aktif dipanggil ulang',
@@ -812,23 +1143,23 @@ export default function QueueDashboardPage() {
     )));
   };
 
-  const changeContainerCount = (count: number) => {
-    const nextCount = Math.max(1, Math.min(12, Number.isFinite(count) ? count : 1));
+  const addContainerDraft = (service: string = 'Verifikasi Berkas') => {
     setSettingsDirty(true);
     setContainerDraft((current) => {
-      if (nextCount <= current.length) return current.slice(0, nextCount);
-
-      const next = [...current];
-      while (next.length < nextCount) {
-        next.push(makeNewContainer(next.length));
-      }
-      return next;
+      if (current.length >= MAX_CONTAINERS) return current;
+      return [...current, makeNewContainer(current.length, service)];
     });
   };
 
   const removeContainerDraft = (index: number) => {
     setSettingsDirty(true);
-    setContainerDraft((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setContainerDraft((current) => current.length <= 1 ? current : current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const resetContainerDraft = () => {
+    setContainerDraft(snapshot.containers.map(toContainerConfig));
+    setSettingsDirty(false);
+    setSettingsMessage('');
   };
 
   const saveContainers = async () => {
@@ -856,6 +1187,20 @@ export default function QueueDashboardPage() {
     }
   };
 
+  const handleResetConfirm = async () => {
+    setResetBusy(true);
+    try {
+      const result = await resetQueueState();
+      setSnapshot(result.snapshot);
+      showFeedback('Semua nomor antrean direset');
+      setResetOpen(false);
+    } catch (error: any) {
+      showFeedback(error?.response?.data?.message || 'Gagal mereset antrean', 'warn');
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4 lg:space-y-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -866,7 +1211,7 @@ export default function QueueDashboardPage() {
           </div>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-foreground lg:text-3xl">Command Center Antrean</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Panggil dan kelola alur antrean Verifikasi → Operator dan layanan Informasi secara realtime.
+            Verifikator memeriksa berkas → klik <span className="font-black">Selesai</span>, lalu tiket otomatis menunggu dipanggil oleh Operator. Loket Informasi berdiri sendiri.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -909,6 +1254,13 @@ export default function QueueDashboardPage() {
           </button>
           <button
             type="button"
+            onClick={() => setResetOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-100"
+          >
+            <Trash2 size={14} /> Reset Semua
+          </button>
+          <button
+            type="button"
             onClick={() => setSettingsOpen(true)}
             className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-black text-foreground ring-1 ring-border transition hover:bg-card-hover"
           >
@@ -936,147 +1288,129 @@ export default function QueueDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <ActiveCallHero
-            container={selectedContainer}
-            busy={busy}
-            onAction={runAction}
-            onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
-          />
+      <ActiveCallHero
+        container={selectedContainer}
+        busy={busy}
+        onAction={runAction}
+        onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
+      />
 
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Loket Aktif</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Klik loket untuk mengaturnya sebagai panggilan utama. Setiap loket bisa dipanggil langsung dari kartunya.
-                </p>
-              </div>
-              <span className="rounded-full bg-accent/10 px-3 py-1 text-[11px] font-black text-accent">
-                {snapshot.containers.length} loket
-              </span>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3">
-              {snapshot.containers.map((container) => (
-                <ContainerCard
-                  key={container.id}
-                  container={container}
-                  isSelected={container.id === selectedContainer?.id}
-                  busy={busy}
-                  onSelect={setSelectedContainerId}
-                  onAction={runAction}
-                  onPause={runPause}
-                  onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+      <RoleSection
+        title="Verifikator"
+        description="Loket pemeriksaan berkas. Klik Selesai untuk meneruskan ke Operator."
+        icon={ShieldCheck}
+        tone="cyan"
+        containers={verifContainers}
+        waitingTickets={verifWaiting}
+        selectedContainerId={selectedContainer?.id ?? ''}
+        busy={busy}
+        emptyMessage="Tambahkan loket Verifikator dari pengaturan loket."
+        onSelect={setSelectedContainerId}
+        onAction={runAction}
+        onPause={runPause}
+        onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Menunggu Operator</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  User yang sudah selesai verifikasi dan menunggu dipanggil oleh loket Operator.
-                </p>
-              </div>
-              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${
-                operatorWaiting.length ? 'bg-emerald-500/15 text-emerald-700' : 'bg-card-hover text-muted-foreground'
-              }`}>
-                {operatorWaiting.length} antre
-              </span>
-            </div>
-            {operatorContainersCount === 0 ? (
-              <div className="mt-3 rounded-xl border border-amber-300/40 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">
-                Belum ada loket <span className="font-black">Operator</span> aktif. Buka pengaturan loket untuk membuatnya.
-              </div>
-            ) : null}
-            <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
-              {operatorWaiting.length ? operatorWaiting.map((ticket) => (
-                <div key={ticket.id} className="rounded-xl border border-border bg-surface px-3 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
-                      <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{ticket.visitorName}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-700">
-                      Verifikasi OK
-                    </span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
-                    <div className="rounded-lg bg-card px-2 py-1">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-muted">Asal Sekolah</p>
-                      <p className="truncate font-bold text-foreground">{ticket.originSchool || '—'}</p>
-                    </div>
-                    <div className="rounded-lg bg-card px-2 py-1">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-muted">Jalur</p>
-                      <p className="truncate font-bold text-foreground">{ticket.registrationPath || '—'}</p>
-                    </div>
-                  </div>
-                  {ticket.verifiedBy ? (
-                    <p className="mt-1.5 truncate text-[10px] font-bold uppercase tracking-widest text-emerald-700">
-                      ✓ Diverifikasi {ticket.verifiedBy}
-                    </p>
-                  ) : null}
-                </div>
-              )) : (
-                <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
-                  Belum ada user menunggu panggilan operator.
-                </div>
-              )}
-            </div>
-          </div>
+      <RoleSection
+        title="Operator"
+        description="Memanggil user yang sudah selesai verifikasi berkas."
+        icon={UsersRound}
+        tone="emerald"
+        containers={operatorContainers}
+        waitingTickets={operatorWaiting}
+        selectedContainerId={selectedContainer?.id ?? ''}
+        busy={busy}
+        highlightVerified
+        emptyMessage="Buat loket Operator agar user yang sudah diverifikasi bisa dipanggil."
+        onSelect={setSelectedContainerId}
+        onAction={runAction}
+        onPause={runPause}
+        onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setShowHistory((current) => !current)}
-              className="flex w-full items-center justify-between gap-3 text-left"
-            >
+      <RoleSection
+        title="Informasi"
+        description="Loket layanan informasi umum, independen dari alur verifikasi."
+        icon={Info}
+        tone="violet"
+        containers={informationContainers}
+        waitingTickets={informationWaiting}
+        selectedContainerId={selectedContainer?.id ?? ''}
+        busy={busy}
+        emptyMessage="Tambahkan loket Informasi dari pengaturan loket."
+        onSelect={setSelectedContainerId}
+        onAction={runAction}
+        onPause={runPause}
+        onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowHistory((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <ListChecks size={16} className="text-muted-foreground" />
               <div>
                 <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Histori Panggilan</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">14 panggilan terakhir hari ini.</p>
               </div>
-              <ChevronDown size={16} className={`text-muted transition-transform ${showHistory ? 'rotate-180' : ''}`} />
-            </button>
-            {showHistory ? (
-              <div className="mt-3 max-h-[340px] space-y-2 overflow-y-auto pr-1">
-                {recentHistory.length ? recentHistory.map((ticket) => {
-                  const containerInfo = snapshot.containers.find((container) => container.id === ticket.containerId);
-                  const statusTone = ticket.status === 'DONE'
-                    ? 'bg-emerald-500/15 text-emerald-700'
-                    : ticket.status === 'SKIPPED'
-                      ? 'bg-rose-500/15 text-rose-700'
-                      : 'bg-cyan-500/15 text-cyan-700';
-                  return (
-                    <div key={ticket.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
-                        <p className="truncate text-[11px] font-semibold text-muted-foreground">
-                          {ticket.visitorName} · {containerInfo?.name ?? ticket.containerId}
-                        </p>
-                      </div>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${statusTone}`}>
-                        {ticket.status}
-                      </span>
+            </div>
+            <ChevronDown size={16} className={`text-muted transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+          </button>
+          {showHistory ? (
+            <div className="mt-3 max-h-[340px] space-y-2 overflow-y-auto pr-1">
+              {recentHistory.length ? recentHistory.map((ticket) => {
+                const containerInfo = snapshot.containers.find((container) => container.id === ticket.containerId);
+                const statusTone = ticket.status === 'DONE'
+                  ? 'bg-emerald-500/15 text-emerald-700'
+                  : ticket.status === 'SKIPPED'
+                    ? 'bg-rose-500/15 text-rose-700'
+                    : 'bg-cyan-500/15 text-cyan-700';
+                return (
+                  <div key={ticket.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+                      <p className="truncate text-[11px] font-semibold text-muted-foreground">
+                        {ticket.visitorName} · {containerInfo?.name ?? ticket.containerId}
+                      </p>
                     </div>
-                  );
-                }) : (
-                  <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
-                    Belum ada histori panggilan.
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${statusTone}`}>
+                      {ticket.status}
+                    </span>
                   </div>
-                )}
-              </div>
-            ) : null}
-          </div>
+                );
+              }) : (
+                <div className="rounded-xl border border-border bg-surface px-3 py-6 text-center text-xs font-bold text-muted-foreground">
+                  Belum ada histori panggilan.
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
 
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Live Queue</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Tiket masuk terbaru.</p>
-            <div className="mt-3 max-h-[280px] space-y-2 overflow-y-auto pr-1">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowLiveQueue((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <RadioTower size={16} className="text-muted-foreground" />
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-muted">Live Queue</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">12 tiket terbaru masuk hari ini.</p>
+              </div>
+            </div>
+            <ChevronDown size={16} className={`text-muted transition-transform ${showLiveQueue ? 'rotate-180' : ''}`} />
+          </button>
+          {showLiveQueue ? (
+            <div className="mt-3 max-h-[340px] space-y-2 overflow-y-auto pr-1">
               {snapshot.tickets.slice(0, 12).map((ticket) => {
                 const stage = isOperatorService(ticket.service)
                   ? 'Operator'
@@ -1103,7 +1437,7 @@ export default function QueueDashboardPage() {
                 </div>
               ) : null}
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
 
@@ -1112,11 +1446,20 @@ export default function QueueDashboardPage() {
         draft={containerDraft}
         busy={settingsBusy}
         message={settingsMessage}
+        dirty={settingsDirty}
         onClose={() => setSettingsOpen(false)}
         onChange={changeContainerDraft}
-        onCountChange={changeContainerCount}
+        onAdd={addContainerDraft}
         onRemove={removeContainerDraft}
+        onReset={resetContainerDraft}
         onSave={saveContainers}
+      />
+
+      <ResetConfirmDialog
+        open={resetOpen}
+        busy={resetBusy}
+        onCancel={() => !resetBusy && setResetOpen(false)}
+        onConfirm={handleResetConfirm}
       />
 
       <AnimatePresence>
