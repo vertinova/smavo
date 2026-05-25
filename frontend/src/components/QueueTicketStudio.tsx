@@ -19,6 +19,7 @@ type QueueTicketImage = {
   id: string;
   number: string;
   visitor: string;
+  phoneNumber: string;
   originSchool: string;
   registrationPath: string;
   serviceChoice: string;
@@ -33,6 +34,7 @@ type DownloadStatus = 'pending' | 'downloaded' | 'failed';
 
 type QueueTicketForm = {
   visitorName: string;
+  phoneNumber: string;
   originSchool: string;
   registrationPath: string;
   serviceChoice: string;
@@ -53,6 +55,13 @@ const SERVICE_CONFIG: Record<string, { name: string; prefix: string; accent: str
     wait: 4,
     flow: 'Menunggu dipanggil, menuju layanan informasi, lalu selesai.',
   },
+  'Pembuatan Akun SPMB': {
+    name: 'Pembuatan Akun SPMB SMAN 2 Cibinong',
+    prefix: 'SPMB',
+    accent: 'from-rose-500 to-indigo-600',
+    wait: 6,
+    flow: 'Menunggu dipanggil langsung menuju Verifikator 5 untuk pembuatan akun SPMB.',
+  },
 };
 
 const registrationPathOptions = [
@@ -65,6 +74,7 @@ const registrationPathOptions = [
 
 const serviceChoiceOptions = [
   'Verifikasi Berkas',
+  'Pembuatan Akun SPMB',
   'Informasi',
 ];
 
@@ -116,6 +126,7 @@ function makeLocalTicket(form: QueueTicketForm): QueueTicketImage {
     id,
     number,
     visitor: form.visitorName,
+    phoneNumber: form.phoneNumber,
     originSchool: form.originSchool,
     registrationPath: form.registrationPath,
     serviceChoice: form.serviceChoice,
@@ -129,6 +140,7 @@ function makeLocalTicket(form: QueueTicketForm): QueueTicketImage {
       id,
       number,
       visitor: form.visitorName,
+      phoneNumber: form.phoneNumber,
       originSchool: form.originSchool,
       registrationPath: form.registrationPath,
       serviceChoice: form.serviceChoice,
@@ -143,6 +155,7 @@ function mapRemoteTicket(ticket: RemoteQueueTicket): QueueTicketImage {
     id: ticket.id,
     number: ticket.number,
     visitor: ticket.visitorName,
+    phoneNumber: ticket.phoneNumber ?? '-',
     originSchool: ticket.originSchool ?? '-',
     registrationPath: ticket.registrationPath ?? '-',
     serviceChoice: ticket.serviceChoice ?? formatQueueLabel(ticket.service),
@@ -156,6 +169,7 @@ function mapRemoteTicket(ticket: RemoteQueueTicket): QueueTicketImage {
       id: ticket.id,
       number: ticket.number,
       visitor: ticket.visitorName,
+      phoneNumber: ticket.phoneNumber,
       originSchool: ticket.originSchool,
       registrationPath: ticket.registrationPath,
       serviceChoice: ticket.serviceChoice,
@@ -221,6 +235,10 @@ function PremiumImageTicket({ ticket }: { ticket: QueueTicketImage }) {
           <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Calon Peserta</p>
             <p className="mt-2 break-words text-base font-bold leading-snug">{ticket.visitor}</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">No HP</p>
+            <p className="mt-2 break-words text-base font-bold leading-snug">{ticket.phoneNumber}</p>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/12 p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Asal Sekolah</p>
@@ -309,6 +327,10 @@ function QueueTicketResultModal({
                 <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.visitor}</p>
               </div>
               <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">No HP</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.phoneNumber}</p>
+              </div>
+              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Asal Sekolah</p>
                 <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.originSchool}</p>
               </div>
@@ -376,6 +398,7 @@ function QueueTicketResultModal({
 
 export default function QueueTicketStudio() {
   const [visitor, setVisitor] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [originSchool, setOriginSchool] = useState('');
   const [registrationPath, setRegistrationPath] = useState(registrationPathOptions[0]);
   const [serviceChoice, setServiceChoice] = useState(serviceChoiceOptions[0]);
@@ -388,6 +411,7 @@ export default function QueueTicketStudio() {
   const [pendingDownload, setPendingDownload] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const phoneNumberRef = useRef<HTMLInputElement>(null);
   const originSchoolRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -446,6 +470,7 @@ export default function QueueTicketStudio() {
       try {
         const result = await createRemoteQueueTicket({
           visitorName: form.visitorName,
+          phoneNumber: form.phoneNumber,
           originSchool: form.originSchool,
           registrationPath: form.registrationPath,
           serviceChoice: form.serviceChoice,
@@ -465,10 +490,21 @@ export default function QueueTicketStudio() {
 
   const handleTakeQueue = async () => {
     const cleanName = visitor.trim();
+    const cleanPhoneNumber = phoneNumber.trim();
     const cleanOriginSchool = originSchool.trim();
     if (!cleanName) {
       setMessage('Isi nama calon peserta didik terlebih dahulu.');
       nameRef.current?.focus();
+      return;
+    }
+    if (!cleanPhoneNumber) {
+      setMessage('Isi nomor HP terlebih dahulu.');
+      phoneNumberRef.current?.focus();
+      return;
+    }
+    if (!/^[0-9+\-\s()]{8,20}$/.test(cleanPhoneNumber)) {
+      setMessage('Nomor HP harus 8-20 karakter dan hanya berisi angka, spasi, +, -, atau tanda kurung.');
+      phoneNumberRef.current?.focus();
       return;
     }
     if (!cleanOriginSchool) {
@@ -488,6 +524,7 @@ export default function QueueTicketStudio() {
     try {
       const nextTicket = await generateUniqueTicket({
         visitorName: cleanName,
+        phoneNumber: cleanPhoneNumber,
         originSchool: cleanOriginSchool,
         registrationPath,
         serviceChoice,
@@ -519,7 +556,7 @@ export default function QueueTicketStudio() {
             Ambil nomor antrean layanan dari ponsel.
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-500">
-            Pilih Verifikasi Berkas atau Informasi, lalu nomor akan tampil dan tiket PNG otomatis terunduh.
+            Pilih layanan SPMB, lalu nomor akan tampil dan tiket PNG otomatis terunduh.
           </p>
         </div>
 
@@ -546,6 +583,21 @@ export default function QueueTicketStudio() {
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                 placeholder="Contoh: Ahmad Fauzan"
                 autoComplete="name"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <BadgeCheck size={13} /> No HP
+              </span>
+              <input
+                ref={phoneNumberRef}
+                value={phoneNumber}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                placeholder="Contoh: 081234567890"
+                autoComplete="tel"
+                inputMode="tel"
               />
             </label>
 
@@ -628,7 +680,7 @@ export default function QueueTicketStudio() {
           <div className="mt-5 flex items-start gap-3 rounded-2xl bg-slate-950 px-4 py-4 text-white">
             <ShieldCheck size={18} className="mt-0.5 shrink-0 text-cyan-300" />
             <p className="text-xs leading-relaxed text-slate-300">
-              Layanan tersedia: Verifikasi Berkas dan Informasi sesuai loket yang tampil di dashboard.
+              Layanan tersedia: Verifikasi Berkas, Pembuatan Akun SPMB, dan Informasi sesuai loket yang tampil di dashboard.
             </p>
           </div>
         </div>

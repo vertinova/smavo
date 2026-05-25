@@ -6,6 +6,7 @@ export type QueueTicket = {
   id: string;
   number: string;
   visitorName: string;
+  phoneNumber?: string;
   originSchool?: string;
   registrationPath?: string;
   serviceChoice?: string;
@@ -23,6 +24,7 @@ export type QueueTicket = {
 
 export type CreateQueueTicketInput = {
   visitorName: string;
+  phoneNumber?: string;
   containerId?: string;
   originSchool?: string;
   registrationPath?: string;

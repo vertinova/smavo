@@ -112,6 +112,9 @@ const isVerificationService = (service?: string | null) =>
 const isInformationService = (service?: string | null) =>
   formatQueueService(service).trim().toLowerCase() === 'informasi';
 
+const isAccountCreationServiceChoice = (serviceChoice?: string | null) =>
+  (serviceChoice ?? '').trim().toLowerCase() === 'pembuatan akun spmb';
+
 function toContainerConfig(container: QueueContainer): QueueContainerConfig {
   return {
     id: container.id,
@@ -161,6 +164,7 @@ function exportTicketsForExcel(tickets: QueueTicket[]) {
   const headers = [
     'Nomor',
     'Nama Calon Peserta Didik',
+    'No HP',
     'Asal Sekolah',
     'Jalur Pendaftaran',
     'Pilihan Layanan',
@@ -173,6 +177,7 @@ function exportTicketsForExcel(tickets: QueueTicket[]) {
   const rows = tickets.map((ticket) => [
     formatQueueNumber(ticket.number),
     ticket.visitorName,
+    ticket.phoneNumber ?? '',
     ticket.originSchool ?? '',
     ticket.registrationPath ?? '',
     ticket.serviceChoice ?? formatQueueService(ticket.service),
@@ -319,7 +324,7 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
         <div className="mt-3 rounded-xl border border-border bg-surface px-3 py-2">
           <p className="truncate text-xs font-black text-foreground">{active.visitorName}</p>
           <p className="mt-0.5 truncate text-[11px] font-semibold text-muted">
-            {active.originSchool || '—'} {active.registrationPath ? `· ${active.registrationPath}` : ''}
+            {active.phoneNumber || '—'} {active.originSchool ? `· ${active.originSchool}` : ''} {active.registrationPath ? `· ${active.registrationPath}` : ''}
           </p>
           {containerIsOperator && active.verifiedBy ? (
             <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-emerald-700">
@@ -438,6 +443,10 @@ function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroPr
                 <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.visitorName}</p>
               </div>
               <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">No HP</p>
+                <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.phoneNumber || '—'}</p>
+              </div>
+              <div className="rounded-xl bg-surface px-3 py-2 ring-1 ring-border">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Asal Sekolah</p>
                 <p className="mt-0.5 truncate text-sm font-black text-foreground">{active.originSchool || '—'}</p>
               </div>
@@ -531,6 +540,12 @@ function WaitingChip({ ticket, highlightVerified }: WaitingChipProps) {
       <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] font-bold text-muted-foreground">
         {ticket.originSchool ? (
           <span className="rounded-md bg-card px-1.5 py-0.5">{ticket.originSchool}</span>
+        ) : null}
+        {ticket.phoneNumber ? (
+          <span className="rounded-md bg-card px-1.5 py-0.5">{ticket.phoneNumber}</span>
+        ) : null}
+        {isAccountCreationServiceChoice(ticket.serviceChoice) ? (
+          <span className="rounded-md bg-rose-50 px-1.5 py-0.5 text-rose-700 ring-1 ring-rose-100">Verifikator 5</span>
         ) : null}
         {ticket.registrationPath ? (
           <span className="rounded-md bg-card px-1.5 py-0.5">{ticket.registrationPath}</span>
@@ -1377,7 +1392,7 @@ export default function QueueDashboardPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
                       <p className="truncate text-[11px] font-semibold text-muted-foreground">
-                        {ticket.visitorName} · {containerInfo?.name ?? ticket.containerId}
+                        {ticket.visitorName} · {ticket.phoneNumber || '-'} · {containerInfo?.name ?? ticket.containerId}
                       </p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${statusTone}`}>
@@ -1422,7 +1437,7 @@ export default function QueueDashboardPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
                       <p className="truncate text-[11px] font-semibold text-muted-foreground">
-                        {ticket.visitorName} · {stage}
+                        {ticket.visitorName} · {ticket.phoneNumber || '-'} · {stage}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-card-hover px-2 py-0.5 text-[10px] font-black text-muted-foreground">

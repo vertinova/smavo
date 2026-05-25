@@ -23,6 +23,7 @@ export type QueueTicket = {
   id: string;
   number: string;
   visitorName: string;
+  phoneNumber?: string;
   originSchool?: string;
   registrationPath?: string;
   serviceChoice?: string;
@@ -40,6 +41,7 @@ export type QueueTicket = {
 
 export type QueueTicketInput = {
   visitorName: string;
+  phoneNumber?: string;
   containerId?: string;
   originSchool?: string;
   registrationPath?: string;
@@ -94,6 +96,8 @@ const QUEUE_SERVICES = {
   information: 'Informasi',
   operator: 'Operator',
 };
+const ACCOUNT_SERVICE_CHOICE = 'PEMBUATAN AKUN SPMB';
+const ACCOUNT_CONTAINER_ID = 'verifikator-5';
 
 let containers: QueueContainer[] = [
   { id: 'verifikator-1', name: 'Verifikator 1', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Dra. Kristiana, M.Pd.', isPaused: false, accent: 'cyan' },
@@ -230,6 +234,15 @@ function getInitialService(input: QueueTicketInput) {
   return QUEUE_SERVICES.verification;
 }
 
+function isAccountCreationTicket(ticket: Pick<QueueTicket, 'serviceChoice'>) {
+  return normalizeService(ticket.serviceChoice ?? '') === ACCOUNT_SERVICE_CHOICE;
+}
+
+function getAccountCreationContainer() {
+  return containers.find((item) => item.id === ACCOUNT_CONTAINER_ID)
+    ?? containers.find((item) => normalizeService(item.name) === 'VERIFIKATOR 5');
+}
+
 function getFirstContainerForService(service: string) {
   const serviceKey = normalizeService(service);
   return containers.find((item) => normalizeService(item.service) === serviceKey) ?? containers[0];
@@ -265,9 +278,15 @@ function waitingFor(containerId: string) {
   const container = containers.find((item) => item.id === containerId);
   if (!container) return [];
   const serviceKey = normalizeService(container.service);
+  const accountContainerId = getAccountCreationContainer()?.id;
 
   return todayTickets()
-    .filter((ticket) => ticket.status === 'WAITING' && normalizeService(ticket.service) === serviceKey)
+    .filter((ticket) => {
+      if (ticket.status !== 'WAITING' || normalizeService(ticket.service) !== serviceKey) return false;
+      if (!accountContainerId) return true;
+      if (container.id === accountContainerId) return isAccountCreationTicket(ticket);
+      return !isAccountCreationTicket(ticket);
+    })
     .sort(compareQueueOrder);
 }
 
@@ -410,7 +429,10 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
 
 export function createQueueTicket(input: QueueTicketInput) {
   const initialService = getInitialService(input);
-  const requestedContainer = input.containerId ? containers.find((item) => item.id === input.containerId) : null;
+  const accountContainer = normalizeService(input.serviceChoice ?? '') === ACCOUNT_SERVICE_CHOICE
+    ? getAccountCreationContainer()
+    : null;
+  const requestedContainer = accountContainer ?? (input.containerId ? containers.find((item) => item.id === input.containerId) : null);
   const container = requestedContainer && normalizeService(requestedContainer.service) === initialService
     ? requestedContainer
     : getFirstContainerForService(initialService);
@@ -420,6 +442,7 @@ export function createQueueTicket(input: QueueTicketInput) {
     id: makeId('ticket'),
     number,
     visitorName: input.visitorName.trim(),
+    phoneNumber: input.phoneNumber?.trim() || undefined,
     originSchool: input.originSchool?.trim() || undefined,
     registrationPath: input.registrationPath?.trim() || undefined,
     serviceChoice: input.serviceChoice?.trim() || undefined,

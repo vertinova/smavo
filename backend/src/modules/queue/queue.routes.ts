@@ -19,6 +19,7 @@ const clients = new Set<Response>();
 
 const createTicketSchema = z.object({
   visitorName: z.string().min(2).max(120),
+  phoneNumber: z.string().min(8).max(20).regex(/^[0-9+\-\s()]+$/).optional(),
   originSchool: z.string().min(2).max(120).optional(),
   registrationPath: z.string().min(2).max(80).optional(),
   serviceChoice: z.string().min(2).max(80).optional(),
