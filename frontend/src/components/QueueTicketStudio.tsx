@@ -488,6 +488,10 @@ export default function QueueTicketStudio() {
     throw new Error('Tidak dapat membuat nomor antrean unik.');
   };
 
+  const handlePhoneNumberChange = (value: string) => {
+    setPhoneNumber(value.replace(/[^0-9+\-\s()]/g, '').slice(0, 20));
+  };
+
   const handleTakeQueue = async () => {
     const cleanName = visitor.trim();
     const cleanPhoneNumber = phoneNumber.trim();
@@ -545,56 +549,57 @@ export default function QueueTicketStudio() {
   };
 
   return (
-    <section id="antrean" className="relative z-10 py-10 sm:py-20">
-      <div className="mx-auto max-w-md px-4 sm:max-w-lg">
-        <div className="mb-6 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50 px-4 py-1.5">
+    <section id="antrean" className="relative z-10 py-2 sm:py-20">
+      <div className="mx-auto max-w-md px-2.5 sm:max-w-lg sm:px-4">
+        <div className="mb-2 text-center sm:mb-6">
+          <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-0.5 sm:mb-4 sm:gap-2 sm:px-4 sm:py-1.5">
             <Ticket size={13} className="text-cyan-600" />
-            <span className="text-xs font-semibold text-cyan-700">Antrean Layanan Digital</span>
+            <span className="text-[11px] font-semibold text-cyan-700 sm:text-xs">Antrean Layanan Digital</span>
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-            Ambil nomor antrean layanan dari ponsel.
+          <h2 className="text-lg font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+            Ambil Nomor Antrean
           </h2>
-          <p className="mt-3 text-sm leading-relaxed text-slate-500">
+          <p className="mx-auto mt-0.5 max-w-xs text-[11px] leading-snug text-slate-500 sm:mt-3 sm:max-w-none sm:text-sm sm:leading-relaxed">
             Pilih layanan SPMB, lalu nomor akan tampil dan tiket PNG otomatis terunduh.
           </p>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-xl shadow-slate-200/50 backdrop-blur">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-lg shadow-indigo-500/20">
-              <Sparkles size={21} />
+        <div className="rounded-[18px] border border-slate-200 bg-white/90 p-2.5 shadow-xl shadow-slate-200/50 backdrop-blur sm:rounded-[28px] sm:p-5">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-2 sm:gap-3 sm:pb-5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-lg shadow-indigo-500/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+              <Sparkles size={17} className="sm:hidden" />
+              <Sparkles size={21} className="hidden sm:block" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-extrabold text-slate-900">Nomor Antrean Layanan</h3>
-              <p className="text-xs leading-relaxed text-slate-500">Nomor tampil sebagai pop up, tiket langsung download.</p>
+              <h3 className="text-[13px] font-extrabold text-slate-900 sm:text-base">Nomor Antrean Layanan</h3>
+              <p className="hidden text-xs leading-relaxed text-slate-500 sm:block">Nomor tampil sebagai pop up, tiket langsung download.</p>
             </div>
           </div>
 
-          <div className="mt-5 space-y-4">
+          <div className="mt-2 space-y-1.5 sm:mt-5 sm:space-y-4">
             <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+              <span className="mb-0.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:mb-2 sm:gap-2 sm:text-xs">
                 <UserRound size={13} /> Nama Calon Peserta Didik
               </span>
               <input
                 ref={nameRef}
                 value={visitor}
                 onChange={(event) => setVisitor(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-base"
                 placeholder="Contoh: Ahmad Fauzan"
                 autoComplete="name"
               />
             </label>
 
             <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+              <span className="mb-0.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:mb-2 sm:gap-2 sm:text-xs">
                 <BadgeCheck size={13} /> No HP
               </span>
               <input
                 ref={phoneNumberRef}
                 value={phoneNumber}
-                onChange={(event) => setPhoneNumber(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                onChange={(event) => handlePhoneNumberChange(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-base"
                 placeholder="Contoh: 081234567890"
                 autoComplete="tel"
                 inputMode="tel"
@@ -602,74 +607,77 @@ export default function QueueTicketStudio() {
             </label>
 
             <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+              <span className="mb-0.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:mb-2 sm:gap-2 sm:text-xs">
                 <BadgeCheck size={13} /> Asal Sekolah
               </span>
               <input
                 ref={originSchoolRef}
                 value={originSchool}
                 onChange={(event) => setOriginSchool(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-base"
                 placeholder="Contoh: SMP Negeri 1 Cibinong"
                 autoComplete="organization"
               />
             </label>
 
-            <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                <BadgeCheck size={13} /> Jalur Pendaftaran
-              </span>
-              <select
-                value={registrationPath}
-                onChange={(event) => setRegistrationPath(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
-              >
-                {registrationPathOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
+            <div className="grid grid-cols-2 gap-2 sm:block sm:space-y-4">
+              <label className="block min-w-0">
+                <span className="mb-0.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:mb-2 sm:gap-2 sm:text-xs">
+                  <BadgeCheck size={13} /> Jalur
+                </span>
+                <select
+                  value={registrationPath}
+                  onChange={(event) => setRegistrationPath(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-base"
+                >
+                  {registrationPathOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                <BadgeCheck size={13} /> Pilihan Layanan
-              </span>
-              <select
-                value={serviceChoice}
-                onChange={(event) => setServiceChoice(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base font-semibold text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100"
-              >
-                {serviceChoiceOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
+              <label className="block min-w-0">
+                <span className="mb-0.5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:mb-2 sm:gap-2 sm:text-xs">
+                  <BadgeCheck size={13} /> Layanan
+                </span>
+                <select
+                  value={serviceChoice}
+                  onChange={(event) => setServiceChoice(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-100 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-base"
+                >
+                  {serviceChoiceOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
             <button
               type="button"
               disabled={isBusy}
               onClick={handleTakeQueue}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 px-5 py-4 text-base font-black text-white shadow-xl shadow-indigo-500/25 transition hover:scale-[1.01] active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 px-4 py-2.5 text-sm font-black text-white shadow-xl shadow-indigo-500/25 transition hover:scale-[1.01] active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 sm:gap-3 sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base"
             >
-              {isBusy ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+              {isBusy ? <Loader2 size={18} className="animate-spin sm:hidden" /> : <Download size={18} className="sm:hidden" />}
+              {isBusy ? <Loader2 size={20} className="hidden animate-spin sm:block" /> : <Download size={20} className="hidden sm:block" />}
               {isBusy ? 'Menyiapkan Tiket...' : 'Ambil No Antrean'}
             </button>
           </div>
 
           {message ? (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 sm:mt-4 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
               {message}
             </div>
           ) : null}
 
           {lastIssued ? (
-            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+            <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:mt-4 sm:rounded-2xl sm:p-4">
               <div className="flex items-start gap-3">
                 <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">Tiket Terakhir</p>
-                  <p className="mt-1 break-words text-2xl font-black tracking-normal text-emerald-900">{lastIssued.number}</p>
-                  <p className="mt-1 text-xs font-medium text-emerald-700">
+                  <p className="mt-0.5 break-words text-xl font-black tracking-normal text-emerald-900 sm:mt-1 sm:text-2xl">{lastIssued.number}</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-emerald-700 sm:mt-1 sm:text-xs">
                     File tiket PNG sudah diunduh ke perangkat ini.
                   </p>
                 </div>
@@ -677,7 +685,7 @@ export default function QueueTicketStudio() {
             </div>
           ) : null}
 
-          <div className="mt-5 flex items-start gap-3 rounded-2xl bg-slate-950 px-4 py-4 text-white">
+          <div className="mt-5 hidden items-start gap-3 rounded-2xl bg-slate-950 px-4 py-4 text-white sm:flex">
             <ShieldCheck size={18} className="mt-0.5 shrink-0 text-cyan-300" />
             <p className="text-xs leading-relaxed text-slate-300">
               Layanan tersedia: Verifikasi Berkas, Pembuatan Akun SPMB, dan Informasi sesuai loket yang tampil di dashboard.
