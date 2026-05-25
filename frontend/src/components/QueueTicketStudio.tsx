@@ -283,7 +283,7 @@ function QueueTicketResultModal({
   const isPending = downloadStatus === 'pending';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-3 sm:px-4 sm:py-6">
       <button
         type="button"
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
@@ -291,66 +291,74 @@ function QueueTicketResultModal({
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] bg-white shadow-2xl shadow-slate-950/25">
-        <div className={`absolute inset-x-0 top-0 h-36 bg-gradient-to-br ${serviceConfig.accent} opacity-95`} />
-        <div className="absolute right-[-72px] top-[-72px] h-48 w-48 rounded-full bg-white/20" />
-        <div className="absolute left-[-48px] top-24 h-32 w-32 rounded-full bg-cyan-200/30 blur-2xl" />
+      <div className="relative max-h-[calc(100dvh-24px)] w-full max-w-[360px] overflow-hidden rounded-[24px] bg-white shadow-2xl shadow-slate-950/25 sm:max-w-[420px] sm:rounded-[28px]">
+        <div className={`absolute inset-x-0 top-0 h-40 bg-gradient-to-br ${serviceConfig.accent} opacity-95 sm:h-44`} />
+        <div className="absolute right-[-60px] top-[-70px] h-44 w-44 rounded-full bg-white/20" />
+        <div className="absolute left-[-48px] top-20 h-28 w-28 rounded-full bg-cyan-200/30 blur-2xl" />
 
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur transition hover:bg-white/30"
+          className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur transition hover:bg-white/30 sm:right-4 sm:top-4 sm:h-10 sm:w-10"
           aria-label="Tutup"
         >
           <X size={18} />
         </button>
 
-        <div className="relative z-10 p-5 sm:p-6">
-          <div className="flex min-w-0 items-center gap-3 pr-10 text-white">
-            <img src="/logo-smavo.jpeg" alt="SMAVO" className="h-12 w-12 shrink-0 rounded-2xl border border-white/40 object-cover shadow-lg" />
+        <div className="relative z-10 max-h-[calc(100dvh-24px)] overflow-y-auto p-4 sm:p-6">
+          <div className="flex min-w-0 items-center gap-3 pr-9 text-white sm:pr-10">
+            <img src="/logo-smavo.jpeg" alt="SMAVO" className="h-10 w-10 shrink-0 rounded-xl border border-white/40 object-cover shadow-lg sm:h-12 sm:w-12 sm:rounded-2xl" />
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-bold uppercase tracking-[0.2em] text-white/75">Antrean SMAVO</p>
-              <h3 className="text-base font-black leading-tight sm:text-lg">Nomor Antrean Berhasil Dibuat</h3>
+              <p className="truncate text-[10px] font-bold uppercase tracking-[0.2em] text-white/75 sm:text-[11px]">Antrean SMAVO</p>
+              <h3 className="text-sm font-black leading-tight sm:text-lg">Nomor Antrean Berhasil Dibuat</h3>
             </div>
           </div>
 
-          <div className="mt-7 rounded-[24px] border border-slate-100 bg-white p-5 text-center shadow-xl shadow-slate-900/10">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Nomor Antrean</p>
-            <p className="mt-2 break-words text-[4.4rem] font-black leading-none tracking-normal text-slate-950 sm:text-[5rem]">
-              {queueNumber}
-            </p>
-            <p className="mt-2 break-words text-sm font-black text-indigo-600">{displayNumber}</p>
+          <div className="mt-4 rounded-[22px] border border-slate-100 bg-white p-4 shadow-xl shadow-slate-900/10 sm:mt-7 sm:rounded-[24px] sm:p-5">
+            <div className="text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.26em] text-slate-400 sm:text-xs">Nomor Antrean</p>
+              <div className="mt-2 rounded-[20px] bg-slate-950 px-4 py-4 text-white shadow-lg shadow-slate-950/20">
+                <p className="break-words text-[4.2rem] font-black leading-none tracking-normal sm:text-[5rem]">
+                  {queueNumber}
+                </p>
+                <p className="mt-1 break-words text-sm font-black text-cyan-200">{displayNumber}</p>
+              </div>
+            </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
-              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Nama</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.visitor}</p>
+            <div className="mt-3 space-y-2 text-left sm:mt-4 sm:space-y-3">
+              <div className="rounded-2xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Nama</p>
+                <p className="mt-0.5 break-words text-sm font-black text-slate-900">{ticket.visitor}</p>
               </div>
-              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">No HP</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.phoneNumber}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="min-w-0 rounded-2xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">No HP</p>
+                  <p className="mt-0.5 truncate text-sm font-bold text-slate-800">{ticket.phoneNumber}</p>
+                </div>
+                <div className="min-w-0 rounded-2xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Estimasi</p>
+                  <p className="mt-0.5 truncate text-sm font-bold text-slate-800">{ticket.estimate}</p>
+                </div>
               </div>
-              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Asal Sekolah</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.originSchool}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="min-w-0 rounded-2xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Asal Sekolah</p>
+                  <p className="mt-0.5 truncate text-sm font-bold text-slate-800">{ticket.originSchool}</p>
+                </div>
+                <div className="min-w-0 rounded-2xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-100">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Jalur</p>
+                  <p className="mt-0.5 truncate text-sm font-bold text-slate-800">{ticket.registrationPath}</p>
+                </div>
               </div>
-              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Jalur</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.registrationPath}</p>
-              </div>
-              <div className="min-w-0 rounded-2xl bg-slate-50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Layanan</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.serviceChoice}</p>
-              </div>
-              <div className="min-w-0 rounded-2xl bg-slate-50 p-4 sm:col-span-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Estimasi dan Alur</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-800">{ticket.estimate}</p>
-                <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{serviceConfig.flow}</p>
+              <div className="rounded-2xl bg-indigo-50 px-3 py-2.5 ring-1 ring-indigo-100">
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-indigo-400">Layanan</p>
+                <p className="mt-0.5 break-words text-sm font-black text-indigo-900">{ticket.serviceChoice}</p>
+                <p className="mt-1 text-[11px] font-semibold leading-snug text-indigo-700/75">{serviceConfig.flow}</p>
               </div>
             </div>
           </div>
 
-          <div className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 ${
+          <div className={`mt-3 flex items-start gap-2.5 rounded-2xl border px-3 py-2.5 sm:mt-4 sm:gap-3 sm:px-4 sm:py-3 ${
             isDownloaded
               ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
               : isFailed
@@ -358,21 +366,21 @@ function QueueTicketResultModal({
               : 'border-amber-100 bg-amber-50 text-amber-800'
           }`}>
             {isDownloaded ? (
-              <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+              <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600 sm:size-5" />
             ) : isFailed ? (
-              <Download size={20} className="mt-0.5 shrink-0 text-rose-600" />
+              <Download size={18} className="mt-0.5 shrink-0 text-rose-600 sm:size-5" />
             ) : (
-              <Loader2 size={20} className="mt-0.5 shrink-0 animate-spin text-amber-600" />
+              <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin text-amber-600 sm:size-5" />
             )}
             <div className="min-w-0">
-              <p className="text-sm font-black">
+              <p className="text-xs font-black sm:text-sm">
                 {isDownloaded
                   ? 'Tiket PNG sudah diunduh'
                   : isFailed
                     ? 'Tiket belum berhasil diunduh'
                     : 'Tiket sedang disiapkan untuk download'}
               </p>
-              <p className="mt-1 text-xs font-medium leading-relaxed opacity-80">
+              <p className="mt-0.5 text-[11px] font-medium leading-snug opacity-80 sm:mt-1 sm:text-xs sm:leading-relaxed">
                 {isDownloaded
                   ? 'Silakan simpan file tiket dan tunjukkan nomor ini saat dipanggil.'
                   : isFailed
@@ -385,7 +393,7 @@ function QueueTicketResultModal({
           <button
             type="button"
             onClick={onClose}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-slate-950/20 transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg shadow-slate-950/20 transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60 sm:mt-4 sm:py-3.5"
             disabled={isPending}
           >
             {isDownloaded ? 'Selesai' : isFailed ? 'Tutup' : 'Menunggu Download...'}
