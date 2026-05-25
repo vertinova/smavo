@@ -97,7 +97,7 @@ const QUEUE_SERVICES = {
   operator: 'Operator',
 };
 const ACCOUNT_SERVICE_CHOICE = 'PEMBUATAN AKUN SPMB';
-const ACCOUNT_CONTAINER_ID = 'verifikator-5';
+const ACCOUNT_CONTAINER_ID = 'operator-5';
 
 let containers: QueueContainer[] = [
   { id: 'verifikator-1', name: 'Verifikator 1', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Dra. Kristiana, M.Pd.', isPaused: false, accent: 'cyan' },
@@ -105,6 +105,7 @@ let containers: QueueContainer[] = [
   { id: 'verifikator-3', name: 'Verifikator 3', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Mariyana Septi Nugraheni, S.Pd.', isPaused: false, accent: 'emerald' },
   { id: 'verifikator-4', name: 'Verifikator 4', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Rizki, S.Pd.', isPaused: false, accent: 'amber' },
   { id: 'verifikator-5', name: 'Verifikator 5', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Fatasya Kamal, S.Pd.', isPaused: false, accent: 'rose' },
+  { id: 'operator-5', name: 'Operator 5', service: QUEUE_SERVICES.operator, code: 'SPMB', operator: 'Operator 5', isPaused: false, accent: 'rose' },
   { id: 'informasi-1', name: 'INFORMASI', service: QUEUE_SERVICES.information, code: 'SPMB', operator: 'Dra. Sumitri, M.Pd.', isPaused: false, accent: 'cyan' },
 ];
 
@@ -151,10 +152,15 @@ loadQueueState();
 function ensureFlowContainers() {
   const verificationService = normalizeService(QUEUE_SERVICES.verification);
   const informationService = normalizeService(QUEUE_SERVICES.information);
+  const operatorService = normalizeService(QUEUE_SERVICES.operator);
   const hasVerification = containers.some((container) => normalizeService(container.service) === verificationService);
   const hasInformation = containers.some((container) => normalizeService(container.service) === informationService);
+  const hasAccountOperator = containers.some((container) => (
+    container.id === ACCOUNT_CONTAINER_ID
+    || (normalizeService(container.service) === operatorService && normalizeService(container.name) === 'OPERATOR 5')
+  ));
 
-  if (hasVerification && hasInformation) return;
+  if (hasVerification && hasInformation && hasAccountOperator) return;
 
   const legacyVerificationServices = ['SPMB', 'VERIFIKASI SPMB', 'VERIFIKASI BERKAS'];
   const legacyInfoServices = ['INFORMASI', 'LAYANAN INFORMASI', 'INFORMASI SPMB'];
@@ -167,6 +173,15 @@ function ensureFlowContainers() {
     { id: 'verifikator-4', name: 'Verifikator 4', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Rizki, S.Pd.', isPaused: false, accent: 'amber' },
     { id: 'verifikator-5', name: 'Verifikator 5', service: QUEUE_SERVICES.verification, code: 'SPMB', operator: 'Fatasya Kamal, S.Pd.', isPaused: false, accent: 'rose' },
   ];
+  const defaultAccountOperatorContainer = {
+    id: ACCOUNT_CONTAINER_ID,
+    name: 'Operator 5',
+    service: QUEUE_SERVICES.operator,
+    code: 'SPMB',
+    operator: 'Operator 5',
+    isPaused: false,
+    accent: 'rose',
+  };
   containers = [
     ...(hasVerification
       ? containers.filter((container) => normalizeService(container.service) === verificationService)
@@ -179,6 +194,7 @@ function ensureFlowContainers() {
         operator: container.operator?.replace(/operator/gi, 'Verifikator') || `Verifikator ${index + 1}`,
         accent: accents[index % accents.length],
       })) : defaultVerificationContainers)),
+    ...(hasAccountOperator ? [] : [defaultAccountOperatorContainer]),
     ...(hasInformation ? containers.filter((container) => normalizeService(container.service) === informationService) : [{
       id: 'informasi-1',
       name: 'INFORMASI',
@@ -202,6 +218,30 @@ function ensureFlowContainers() {
 }
 
 ensureFlowContainers();
+
+function migrateAccountCreationTickets() {
+  const accountContainer = getAccountCreationContainer();
+  if (!accountContainer) return;
+
+  let changed = false;
+  tickets = tickets.map((ticket) => {
+    if (!isAccountCreationTicket(ticket) || ticket.status !== 'WAITING') return ticket;
+    if (normalizeService(ticket.service) === normalizeService(QUEUE_SERVICES.operator) && ticket.containerId === accountContainer.id) {
+      return ticket;
+    }
+    changed = true;
+    return {
+      ...ticket,
+      service: QUEUE_SERVICES.operator,
+      containerId: accountContainer.id,
+      verifiedAt: ticket.verifiedAt ?? ticket.createdAt,
+    };
+  });
+
+  if (changed) persistQueueState();
+}
+
+migrateAccountCreationTickets();
 
 function sameDay(dateIso: string) {
   const input = new Date(dateIso);
@@ -231,6 +271,7 @@ function normalizeService(value: string) {
 function getInitialService(input: QueueTicketInput) {
   const choice = normalizeService(input.serviceChoice ?? '');
   if (choice.includes('INFORMASI')) return QUEUE_SERVICES.information;
+  if (choice === ACCOUNT_SERVICE_CHOICE) return QUEUE_SERVICES.operator;
   return QUEUE_SERVICES.verification;
 }
 
@@ -240,7 +281,8 @@ function isAccountCreationTicket(ticket: Pick<QueueTicket, 'serviceChoice'>) {
 
 function getAccountCreationContainer() {
   return containers.find((item) => item.id === ACCOUNT_CONTAINER_ID)
-    ?? containers.find((item) => normalizeService(item.name) === 'VERIFIKATOR 5');
+    ?? containers.find((item) => normalizeService(item.service) === normalizeService(QUEUE_SERVICES.operator) && normalizeService(item.name) === 'OPERATOR 5')
+    ?? containers.find((item) => normalizeService(item.service) === normalizeService(QUEUE_SERVICES.operator) && normalizeService(item.name).endsWith(' 5'));
 }
 
 function getFirstContainerForService(service: string) {

@@ -545,7 +545,7 @@ function WaitingChip({ ticket, highlightVerified }: WaitingChipProps) {
           <span className="rounded-md bg-card px-1.5 py-0.5">{ticket.phoneNumber}</span>
         ) : null}
         {isAccountCreationServiceChoice(ticket.serviceChoice) ? (
-          <span className="rounded-md bg-rose-50 px-1.5 py-0.5 text-rose-700 ring-1 ring-rose-100">Verifikator 5</span>
+          <span className="rounded-md bg-rose-50 px-1.5 py-0.5 text-rose-700 ring-1 ring-rose-100">Operator 5</span>
         ) : null}
         {ticket.registrationPath ? (
           <span className="rounded-md bg-card px-1.5 py-0.5">{ticket.registrationPath}</span>

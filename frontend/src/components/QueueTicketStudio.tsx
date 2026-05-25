@@ -60,7 +60,7 @@ const SERVICE_CONFIG: Record<string, { name: string; prefix: string; accent: str
     prefix: 'SPMB',
     accent: 'from-rose-500 to-indigo-600',
     wait: 6,
-    flow: 'Menunggu dipanggil langsung menuju Verifikator 5 untuk pembuatan akun SPMB.',
+    flow: 'Menunggu dipanggil langsung menuju Operator 5 untuk pembuatan akun SPMB.',
   },
 };
 
