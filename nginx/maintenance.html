@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#07111f" />
+    <title>SMAVO - Maintenance</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111f;
+        --panel: rgba(255, 255, 255, 0.08);
+        --line: rgba(255, 255, 255, 0.16);
+        --text: #f8fafc;
+        --muted: #b6c2d2;
+        --accent: #22d3ee;
+        --accent-2: #6366f1;
+        --warn: #fbbf24;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.22), transparent 32%),
+          radial-gradient(circle at 82% 12%, rgba(99, 102, 241, 0.24), transparent 34%),
+          linear-gradient(135deg, #07111f 0%, #101827 48%, #07111f 100%);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 24px;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+        background-size: 42px 42px;
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent 78%);
+        pointer-events: none;
+      }
+
+      main {
+        position: relative;
+        width: min(100%, 720px);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.06));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+        padding: clamp(28px, 6vw, 56px);
+        text-align: center;
+        backdrop-filter: blur(22px);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid rgba(34, 211, 238, 0.35);
+        border-radius: 999px;
+        background: rgba(34, 211, 238, 0.1);
+        color: #a5f3fc;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .pulse {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--warn);
+        box-shadow: 0 0 0 rgba(251, 191, 36, 0.55);
+        animation: pulse 1.5s infinite;
+      }
+
+      h1 {
+        margin: 24px 0 0;
+        font-size: clamp(34px, 7vw, 68px);
+        line-height: 0.95;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 18px auto 0;
+        max-width: 560px;
+        color: var(--muted);
+        font-size: clamp(15px, 2.2vw, 18px);
+        line-height: 1.7;
+      }
+
+      .status {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 34px;
+      }
+
+      .status div {
+        min-height: 86px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.07);
+        padding: 16px 12px;
+      }
+
+      .status strong {
+        display: block;
+        font-size: 22px;
+      }
+
+      .status span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+
+      .loader {
+        position: relative;
+        width: 76px;
+        height: 76px;
+        margin: 30px auto 0;
+        border-radius: 999px;
+        border: 3px solid rgba(255, 255, 255, 0.12);
+        border-top-color: var(--accent);
+        animation: spin 0.85s linear infinite;
+      }
+
+      .loader::after {
+        content: "";
+        position: absolute;
+        inset: 15px;
+        border-radius: inherit;
+        border: 3px solid transparent;
+        border-bottom-color: var(--accent-2);
+      }
+
+      footer {
+        margin-top: 28px;
+        color: rgba(226, 232, 240, 0.62);
+        font-size: 13px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes pulse {
+        70% {
+          box-shadow: 0 0 0 14px rgba(251, 191, 36, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+        }
+      }
+
+      @media (max-width: 560px) {
+        body {
+          padding: 14px;
+        }
+
+        main {
+          border-radius: 22px;
+        }
+
+        .status {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="badge"><span class="pulse"></span> Sistem sedang diperbarui</div>
+      <h1>SMAVO kembali sebentar lagi.</h1>
+      <p>
+        Kami sedang menjalankan proses build dan restart layanan. Halaman ini muncul otomatis
+        ketika server aplikasi belum siap, lalu akan hilang sendiri setelah deploy selesai.
+      </p>
+
+      <div class="loader" aria-hidden="true"></div>
+
+      <section class="status" aria-label="Status maintenance">
+        <div>
+          <strong>502</strong>
+          <span>Gateway dialihkan</span>
+        </div>
+        <div>
+          <strong>Deploy</strong>
+          <span>Sedang berjalan</span>
+        </div>
+        <div>
+          <strong>Auto</strong>
+          <span>Refresh aman</span>
+        </div>
+      </section>
+
+      <footer>Silakan muat ulang halaman dalam beberapa saat.</footer>
+    </main>
+  </body>
+</html>

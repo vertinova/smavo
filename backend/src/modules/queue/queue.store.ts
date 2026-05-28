@@ -50,7 +50,7 @@ export type QueueTicketInput = {
 
 export type QueueEvent = {
   id: string;
-  type: 'CREATED' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED';
+  type: 'CREATED' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
   ticketNumber?: string;
   containerId?: string;
   message: string;
@@ -79,6 +79,7 @@ type QueueSnapshot = {
     peakHour: string;
     hourlyTraffic: { hour: string; total: number; done: number }[];
   };
+  isOpen: boolean;
   generatedAt: string;
 };
 
@@ -87,6 +88,7 @@ type PersistedQueueState = {
   tickets?: QueueTicket[];
   events?: QueueEvent[];
   counters?: Array<[string, number]>;
+  isOpen?: boolean;
 };
 
 const accents = ['cyan', 'violet', 'emerald', 'amber', 'rose'];
@@ -111,6 +113,7 @@ let containers: QueueContainer[] = [
 
 let tickets: QueueTicket[] = [];
 let events: QueueEvent[] = [];
+let isOpen = true;
 const counters = new Map<string, number>();
 
 function loadQueueState() {
@@ -121,6 +124,7 @@ function loadQueueState() {
     if (Array.isArray(parsed.containers) && parsed.containers.length) containers = parsed.containers;
     if (Array.isArray(parsed.tickets)) tickets = parsed.tickets;
     if (Array.isArray(parsed.events)) events = parsed.events;
+    if (typeof parsed.isOpen === 'boolean') isOpen = parsed.isOpen;
     if (Array.isArray(parsed.counters)) {
       counters.clear();
       parsed.counters.forEach(([key, value]) => {
@@ -140,6 +144,7 @@ function persistQueueState() {
       tickets,
       events,
       counters: [...counters.entries()],
+      isOpen,
     };
     fs.writeFileSync(queueStateFile, JSON.stringify(payload, null, 2));
   } catch (error) {
@@ -431,8 +436,25 @@ export function getQueueSnapshot(): QueueSnapshot {
       peakHour: peak?.total ? peak.hour : '-',
       hourlyTraffic,
     },
+    isOpen,
     generatedAt: nowIso(),
   };
+}
+
+export function isQueueOpen() {
+  return isOpen;
+}
+
+export function setQueueOpen(open: boolean) {
+  if (isOpen === open) return isOpen;
+
+  isOpen = open;
+  addEvent({
+    type: open ? 'OPENED' : 'CLOSED',
+    message: open ? 'Antrean dibuka oleh admin' : 'Antrean ditutup oleh admin',
+  });
+  persistQueueState();
+  return isOpen;
 }
 
 export function updateQueueContainers(inputs: QueueContainerInput[]) {

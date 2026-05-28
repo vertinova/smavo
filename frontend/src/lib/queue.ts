@@ -50,7 +50,7 @@ export type QueueContainerConfig = Pick<QueueContainer, 'id' | 'name' | 'service
 
 export type QueueEvent = {
   id: string;
-  type: 'CREATED' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED';
+  type: 'CREATED' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
   ticketNumber?: string;
   containerId?: string;
   message: string;
@@ -73,6 +73,7 @@ export type QueueSnapshot = {
     peakHour: string;
     hourlyTraffic: { hour: string; total: number; done: number }[];
   };
+  isOpen: boolean;
   generatedAt: string;
 };
 
@@ -92,6 +93,7 @@ export const emptyQueueSnapshot: QueueSnapshot = {
     peakHour: '-',
     hourlyTraffic: [],
   },
+  isOpen: true,
   generatedAt: new Date().toISOString(),
 };
 
@@ -116,6 +118,11 @@ export async function queueAction(containerId: string, action: 'call' | 'next' |
 
 export async function pauseContainer(containerId: string, paused: boolean) {
   const { data } = await api.post<{ success: boolean; snapshot: QueueSnapshot }>(`/queue/containers/${containerId}/pause`, { paused });
+  return data;
+}
+
+export async function setQueueOpen(isOpen: boolean) {
+  const { data } = await api.post<{ success: boolean; data: { isOpen: boolean }; snapshot: QueueSnapshot }>('/queue/status', { isOpen });
   return data;
 }
 

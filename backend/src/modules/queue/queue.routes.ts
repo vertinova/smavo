@@ -7,9 +7,11 @@ import {
   completeTicket,
   createQueueTicket,
   getQueueSnapshot,
+  isQueueOpen,
   recallTicket,
   resetQueueState,
   setContainerPaused,
+  setQueueOpen,
   skipTicket,
   updateQueueContainers,
 } from './queue.store.js';
@@ -36,6 +38,10 @@ const updateContainersSchema = z.object({
     isPaused: z.boolean().optional(),
     accent: z.enum(['cyan', 'violet', 'emerald', 'amber', 'rose']).optional(),
   })).min(1).max(12),
+});
+
+const updateQueueStatusSchema = z.object({
+  isOpen: z.boolean(),
 });
 
 function broadcastQueueState() {
@@ -82,9 +88,23 @@ router.get('/events', (req, res) => {
 router.post('/tickets', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const payload = createTicketSchema.parse(req.body);
+    if (!isQueueOpen()) {
+      throw new AppError('Antrean sedang ditutup oleh admin. Silakan ambil nomor saat antrean dibuka kembali.', 403);
+    }
     const ticket = createQueueTicket(payload);
     broadcastQueueState();
     res.status(201).json({ success: true, data: ticket, snapshot: getQueueSnapshot() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/status', authenticate, authorize('ADMIN'), (req, res, next) => {
+  try {
+    const payload = updateQueueStatusSchema.parse(req.body);
+    const isOpen = setQueueOpen(payload.isOpen);
+    broadcastQueueState();
+    res.json({ success: true, data: { isOpen }, snapshot: getQueueSnapshot() });
   } catch (err) {
     next(err);
   }

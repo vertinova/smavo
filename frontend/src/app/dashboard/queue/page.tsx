@@ -36,6 +36,7 @@ import {
   formatQueueService,
   queueAction,
   resetQueueState,
+  setQueueOpen as updateQueueOpen,
   speakQueueCall,
   unlockQueueAudio,
   updateQueueContainers,
@@ -1001,12 +1002,24 @@ export default function QueueDashboardPage() {
   const [showLiveQueue, setShowLiveQueue] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     refresh().catch(() => {});
     return connect();
   }, [connect, refresh]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem('smavo_user');
+    if (!raw) return;
+
+    try {
+      setIsAdmin(JSON.parse(raw).role === 'ADMIN');
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
 
   useEffect(() => {
     const savedStyle = localStorage.getItem('smavo_queue_voice_style') as QueueVoiceStyle | null;
@@ -1145,6 +1158,20 @@ export default function QueueDashboardPage() {
     }
   };
 
+  const toggleQueueOpen = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await updateQueueOpen(!snapshot.isOpen);
+      setSnapshot(result.snapshot);
+      showFeedback(result.snapshot.isOpen ? 'Antrean dibuka' : 'Antrean ditutup');
+    } catch (error: any) {
+      showFeedback(error?.response?.data?.message || 'Gagal mengubah status antrean', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const enableAudio = () => {
     const enabled = unlockQueueAudio(audioOptions);
     setAudioEnabled(enabled);
@@ -1228,8 +1255,26 @@ export default function QueueDashboardPage() {
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Verifikator memeriksa berkas → klik <span className="font-black">Selesai</span>, lalu tiket otomatis menunggu dipanggil oleh Operator. Loket Informasi berdiri sendiri.
           </p>
+          <p className={`mt-1 text-sm font-black ${snapshot.isOpen ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {snapshot.isOpen ? 'Antrean publik sedang dibuka.' : 'Antrean publik sedang ditutup.'}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={toggleQueueOpen}
+              disabled={busy}
+              className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black shadow-sm transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70 ${
+                snapshot.isOpen
+                  ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100'
+                  : 'bg-emerald-500 text-white shadow-emerald-500/30 hover:bg-emerald-600'
+              }`}
+            >
+              {busy ? <Loader2 size={14} className="animate-spin" /> : snapshot.isOpen ? <Pause size={14} /> : <Play size={14} />}
+              {snapshot.isOpen ? 'Tutup Antrean' : 'Buka Antrean'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={enableAudio}

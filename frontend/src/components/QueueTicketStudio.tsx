@@ -7,13 +7,19 @@ import {
   CheckCircle2,
   Download,
   Loader2,
+  Lock,
   ShieldCheck,
   Sparkles,
   Ticket,
   UserRound,
   X,
 } from 'lucide-react';
-import { createQueueTicket as createRemoteQueueTicket, type QueueTicket as RemoteQueueTicket } from '@/lib/queue';
+import {
+  createQueueTicket as createRemoteQueueTicket,
+  fetchQueueState,
+  openQueueEventSource,
+  type QueueTicket as RemoteQueueTicket,
+} from '@/lib/queue';
 
 type QueueTicketImage = {
   id: string;
@@ -190,6 +196,16 @@ function downloadBlob(blob: Blob, fileName: string) {
 
 function displayQueueNumber(number: string) {
   return formatQueueLabel(number);
+}
+
+function getApiErrorMessage(error: any) {
+  if (error?.response?.data?.message) return error.response.data.message;
+  if (error?.request) return 'Server antrean belum terhubung. Coba lagi sebentar.';
+  return error?.message || 'Terjadi kesalahan.';
+}
+
+function isQueueClosedError(error: any) {
+  return error?.response?.status === 403 && /antrean sedang ditutup/i.test(getApiErrorMessage(error));
 }
 
 function PremiumImageTicket({ ticket }: { ticket: QueueTicketImage }) {
@@ -415,12 +431,32 @@ export default function QueueTicketStudio() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('pending');
   const [lastIssued, setLastIssued] = useState<QueueTicketImage | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(true);
   const [message, setMessage] = useState('');
   const [pendingDownload, setPendingDownload] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneNumberRef = useRef<HTMLInputElement>(null);
   const originSchoolRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchQueueState()
+      .then((snapshot) => {
+        if (!cancelled) setQueueOpen(snapshot.isOpen);
+      })
+      .catch(() => {});
+
+    const source = openQueueEventSource((snapshot) => {
+      setQueueOpen(snapshot.isOpen);
+    });
+
+    return () => {
+      cancelled = true;
+      source.close();
+    };
+  }, []);
 
   useEffect(() => {
     if (!pendingDownload || !ticket) return;
@@ -484,8 +520,11 @@ export default function QueueTicketStudio() {
           serviceChoice: form.serviceChoice,
         });
         nextTicket = mapRemoteTicket(result.data);
-      } catch {
-        nextTicket = makeLocalTicket(form);
+      } catch (error: any) {
+        if (isQueueClosedError(error)) {
+          setQueueOpen(false);
+        }
+        throw new Error(getApiErrorMessage(error));
       }
 
       if (!getDownloadedNumbers().has(nextTicket.number)) {
@@ -524,6 +563,10 @@ export default function QueueTicketStudio() {
       originSchoolRef.current?.focus();
       return;
     }
+    if (!queueOpen) {
+      setMessage('Antrean sedang ditutup oleh admin. Silakan ambil nomor saat antrean dibuka kembali.');
+      return;
+    }
 
     if (isBusy) return;
 
@@ -544,10 +587,10 @@ export default function QueueTicketStudio() {
       setModalTicket(nextTicket);
       setTicket(nextTicket);
       setPendingDownload(true);
-    } catch {
+    } catch (error: any) {
       setIsBusy(false);
       setPendingDownload(false);
-      setMessage('Nomor antrean belum bisa dibuat. Coba lagi sebentar.');
+      setMessage(getApiErrorMessage(error) || 'Nomor antrean belum bisa dibuat. Coba lagi sebentar.');
     }
   };
 
@@ -568,7 +611,9 @@ export default function QueueTicketStudio() {
             Ambil Nomor Antrean
           </h2>
           <p className="mx-auto mt-0.5 max-w-xs text-[11px] leading-snug text-slate-500 sm:mt-3 sm:max-w-none sm:text-sm sm:leading-relaxed">
-            Pilih layanan SPMB, lalu nomor akan tampil dan tiket PNG otomatis terunduh.
+            {queueOpen
+              ? 'Pilih layanan SPMB, lalu nomor akan tampil dan tiket PNG otomatis terunduh.'
+              : 'Antrean sedang ditutup oleh admin. Pengambilan nomor akan aktif lagi setelah antrean dibuka.'}
           </p>
         </div>
 
@@ -583,6 +628,13 @@ export default function QueueTicketStudio() {
               <p className="hidden text-xs leading-relaxed text-slate-500 sm:block">Nomor tampil sebagai pop up, tiket langsung download.</p>
             </div>
           </div>
+
+          {!queueOpen ? (
+            <div className="mt-2 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 sm:mt-4 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
+              <Lock size={16} className="mt-0.5 shrink-0" />
+              <span>Antrean ditutup. Tombol ambil nomor akan aktif otomatis saat admin membuka antrean.</span>
+            </div>
+          ) : null}
 
           <div className="mt-2 space-y-1.5 sm:mt-5 sm:space-y-4">
             <label className="block">
@@ -662,13 +714,13 @@ export default function QueueTicketStudio() {
 
             <button
               type="button"
-              disabled={isBusy}
+              disabled={isBusy || !queueOpen}
               onClick={handleTakeQueue}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 px-4 py-2.5 text-sm font-black text-white shadow-xl shadow-indigo-500/25 transition hover:scale-[1.01] active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 sm:gap-3 sm:rounded-2xl sm:px-5 sm:py-4 sm:text-base"
             >
-              {isBusy ? <Loader2 size={18} className="animate-spin sm:hidden" /> : <Download size={18} className="sm:hidden" />}
-              {isBusy ? <Loader2 size={20} className="hidden animate-spin sm:block" /> : <Download size={20} className="hidden sm:block" />}
-              {isBusy ? 'Menyiapkan Tiket...' : 'Ambil No Antrean'}
+              {isBusy ? <Loader2 size={18} className="animate-spin sm:hidden" /> : queueOpen ? <Download size={18} className="sm:hidden" /> : <Lock size={18} className="sm:hidden" />}
+              {isBusy ? <Loader2 size={20} className="hidden animate-spin sm:block" /> : queueOpen ? <Download size={20} className="hidden sm:block" /> : <Lock size={20} className="hidden sm:block" />}
+              {isBusy ? 'Menyiapkan Tiket...' : queueOpen ? 'Ambil No Antrean' : 'Antrean Ditutup'}
             </button>
           </div>
 

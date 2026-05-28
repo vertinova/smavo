@@ -38,9 +38,9 @@ jobs:
               exit 1
             fi
 
-            # Build & restart containers
-            docker compose down --remove-orphans
+            # Build & restart containers without stopping nginx first.
+            # This keeps the maintenance page available while app services are rebuilt.
             docker compose build --no-cache
-            docker compose up -d
+            docker compose up -d --remove-orphans
 
             echo "Deploy selesai! https://smavo.vertinova.id"
