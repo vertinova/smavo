@@ -89,11 +89,11 @@ function QueueNumber({ container, featured }: { container: QueueContainer; featu
           transition={{ type: 'spring', stiffness: 200, damping: 22 }}
         >
           {prefix && active ? (
-            <p className="truncate text-[0.82rem] font-black uppercase tracking-[0.14em] text-slate-500">
+            <p className="truncate text-[0.7rem] font-black uppercase tracking-[0.12em] text-slate-500">
               {prefix}
             </p>
           ) : null}
-          <p className="mt-0.5 truncate text-[clamp(2.1rem,2.9vw,3.35rem)] font-black leading-none tracking-normal text-slate-950">
+          <p className="truncate text-[clamp(1.85rem,2.35vw,2.75rem)] font-black leading-none tracking-normal text-slate-950">
             {active ? suffix : displayNumber}
           </p>
         </motion.div>
@@ -102,10 +102,12 @@ function QueueNumber({ container, featured }: { container: QueueContainer; featu
   );
 }
 
-function StatusPill({ paused }: { paused: boolean }) {
+function StatusPill({ paused, compact = false }: { paused: boolean; compact?: boolean }) {
   return (
     <span
-      className={`inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-black ring-1 ${
+      className={`inline-flex shrink-0 items-center rounded-full font-black ring-1 ${
+        compact ? 'h-7 px-2.5 text-[10px]' : 'h-8 px-3 text-xs'
+      } ${
         paused
           ? 'bg-amber-100 text-amber-800 ring-amber-200'
           : 'bg-emerald-100 text-emerald-800 ring-emerald-200'
@@ -126,29 +128,30 @@ function ServiceTile({ container, featured = false, highlight = false }: { conta
         layout
         layoutId={`tile-${container.id}`}
         transition={{ layout: { type: 'spring', stiffness: 220, damping: 26 } }}
-        className={`relative grid h-full min-h-[118px] grid-cols-[minmax(0,1fr)_minmax(6.5rem,auto)] items-center gap-3 overflow-hidden rounded-2xl border bg-white/95 p-4 text-left shadow-lg shadow-sky-200/20 backdrop-blur-xl transition-colors ${
+        className={`relative flex h-full min-h-[96px] flex-col justify-between overflow-hidden rounded-2xl border bg-white/95 p-3 text-left shadow-lg shadow-sky-200/20 backdrop-blur-xl transition-colors ${
           highlight ? 'border-cyan-400 ring-2 ring-cyan-300/50' : 'border-slate-200/80'
         }`}
       >
         <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${isActive ? 'from-cyan-400 via-sky-500 to-amber-300' : 'from-slate-200 via-slate-100 to-slate-200'}`} />
-        <div className="min-w-0">
-          <p className="truncate text-[0.62rem] font-black uppercase tracking-[0.22em] text-cyan-700">{container.name}</p>
-          <div className="mt-1.5">
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <p className="min-w-0 truncate text-[0.62rem] font-black uppercase tracking-[0.2em] text-cyan-700">{container.name}</p>
+          <StatusPill paused={container.isPaused} compact />
+        </div>
+
+        <div className="grid min-h-0 grid-cols-[minmax(4.7rem,0.75fr)_minmax(0,1fr)_minmax(6.8rem,auto)] items-end gap-2">
+          <div className="min-w-0">
             <QueueNumber container={container} featured={false} />
           </div>
-          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <div className="min-w-0 pb-0.5">
             <p className="truncate text-sm font-black leading-tight text-slate-900">{container.operator || container.name}</p>
-            <p className="truncate text-xs font-bold text-slate-500">{formatQueueService(container.service)}</p>
+            <p className="truncate text-[11px] font-bold leading-tight text-slate-500">{formatQueueService(container.service)}</p>
           </div>
-        </div>
-        <div className="flex h-full min-w-0 flex-col items-end justify-between gap-2">
-          <StatusPill paused={container.isPaused} />
-          <div className="max-w-full text-right">
+          <div className="min-w-0 pb-0.5 text-right">
             <p className="text-[0.6rem] font-black uppercase tracking-[0.18em] text-slate-400">Berikutnya</p>
             <div className="mt-1 flex flex-wrap justify-end gap-1">
               {nextTickets.length ? (
                 nextTickets.map((ticket) => (
-                  <span key={ticket.id} className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-black text-sky-900 ring-1 ring-sky-100">
+                  <span key={ticket.id} className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-black text-sky-900 ring-1 ring-sky-100">
                     {formatQueueNumber(ticket.number)}
                   </span>
                 ))
@@ -347,7 +350,7 @@ export default function QueueDisplayPage() {
             </AnimatePresence>
           </div>
         ) : (
-          <div className="grid h-full min-h-0 grid-rows-[minmax(250px,0.82fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(420px,0.86fr)_minmax(620px,1.14fr)] xl:grid-rows-none xl:gap-5">
+          <div className="grid h-full min-h-0 grid-rows-[minmax(230px,0.78fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(380px,0.78fr)_minmax(680px,1.22fr)] xl:grid-rows-none xl:gap-5">
             <AnimatePresence mode="popLayout">
               {featuredContainer ? (
                 <ServiceTile key={`featured-${featuredContainer.id}`} container={featuredContainer} featured />
@@ -356,7 +359,7 @@ export default function QueueDisplayPage() {
             <div
               className="grid min-h-0 content-start gap-2 overflow-y-auto pr-1 xl:gap-3"
               style={{
-                gridAutoRows: otherCount > 8 ? 'minmax(118px, 1fr)' : 'minmax(132px, 1fr)',
+                gridAutoRows: otherCount > 8 ? 'minmax(96px, 1fr)' : 'minmax(112px, 1fr)',
                 gridTemplateColumns: otherCount > 2 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)',
               }}
             >
@@ -382,7 +385,7 @@ export default function QueueDisplayPage() {
         </div>
       </div>
 
-      <div className="absolute bottom-[3.25rem] left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 opacity-30 transition-opacity hover:opacity-100 focus-within:opacity-100 sm:left-5 sm:right-5 xl:bottom-[4rem] xl:left-8 xl:right-8">
+      <div className="absolute bottom-[3.25rem] left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100 sm:left-5 sm:right-5 xl:bottom-[4rem] xl:left-8 xl:right-8">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2 rounded-full border border-cyan-100 bg-white/85 px-3 py-1.5 text-[11px] font-black text-slate-700 shadow-lg shadow-cyan-200/20 backdrop-blur">
             <RadioTower size={14} className={connected ? 'text-emerald-500' : 'text-amber-500'} />
