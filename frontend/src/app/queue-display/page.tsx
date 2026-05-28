@@ -64,11 +64,11 @@ function QueueNumber({ container, featured }: { container: QueueContainer; featu
             transition={{ type: 'spring', stiffness: 200, damping: 22 }}
           >
             {prefix ? (
-              <p className="truncate text-[clamp(1.4rem,3vw,3rem)] font-black leading-none tracking-normal text-slate-950/80">
+              <p className="truncate text-[clamp(1.15rem,2.1vw,2.25rem)] font-black leading-none tracking-normal text-slate-950/80">
                 {prefix}
               </p>
             ) : null}
-            <p className="mt-2 text-[clamp(4.5rem,12vw,10rem)] font-black leading-[0.85] tracking-tight text-slate-950">
+            <p className="mt-1 text-[clamp(4rem,8.5vw,7.5rem)] font-black leading-[0.86] tracking-tight text-slate-950">
               {suffix}
             </p>
           </motion.div>
@@ -78,20 +78,27 @@ function QueueNumber({ container, featured }: { container: QueueContainer; featu
   }
 
   return (
-    <h2 className="break-words text-[clamp(1.5rem,3.2vw,2.6rem)] font-black leading-none tracking-tight text-slate-950">
+    <div className="min-w-0">
       <AnimatePresence mode="wait">
-        <motion.span
+        <motion.div
           key={active?.number ?? `${container.id}-empty`}
-          className="block"
+          className="min-w-0"
           initial={{ opacity: 0, y: 16, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -16, scale: 1.02 }}
           transition={{ type: 'spring', stiffness: 200, damping: 22 }}
         >
-          {displayNumber}
-        </motion.span>
+          {prefix && active ? (
+            <p className="truncate text-[0.82rem] font-black uppercase tracking-[0.14em] text-slate-500">
+              {prefix}
+            </p>
+          ) : null}
+          <p className="mt-0.5 truncate text-[clamp(2.1rem,2.9vw,3.35rem)] font-black leading-none tracking-normal text-slate-950">
+            {active ? suffix : displayNumber}
+          </p>
+        </motion.div>
       </AnimatePresence>
-    </h2>
+    </div>
   );
 }
 
@@ -119,7 +126,7 @@ function ServiceTile({ container, featured = false, highlight = false }: { conta
         layout
         layoutId={`tile-${container.id}`}
         transition={{ layout: { type: 'spring', stiffness: 220, damping: 26 } }}
-        className={`relative grid h-full min-h-[110px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-2xl border bg-white/95 p-4 text-left shadow-lg shadow-sky-200/20 backdrop-blur-xl transition-colors ${
+        className={`relative grid h-full min-h-[118px] grid-cols-[minmax(0,1fr)_minmax(6.5rem,auto)] items-center gap-3 overflow-hidden rounded-2xl border bg-white/95 p-4 text-left shadow-lg shadow-sky-200/20 backdrop-blur-xl transition-colors ${
           highlight ? 'border-cyan-400 ring-2 ring-cyan-300/50' : 'border-slate-200/80'
         }`}
       >
@@ -134,14 +141,14 @@ function ServiceTile({ container, featured = false, highlight = false }: { conta
             <p className="truncate text-xs font-bold text-slate-500">{formatQueueService(container.service)}</p>
           </div>
         </div>
-        <div className="flex h-full flex-col items-end justify-between gap-2">
+        <div className="flex h-full min-w-0 flex-col items-end justify-between gap-2">
           <StatusPill paused={container.isPaused} />
-          <div className="max-w-[9rem] text-right">
+          <div className="max-w-full text-right">
             <p className="text-[0.6rem] font-black uppercase tracking-[0.18em] text-slate-400">Berikutnya</p>
             <div className="mt-1 flex flex-wrap justify-end gap-1">
               {nextTickets.length ? (
                 nextTickets.map((ticket) => (
-                  <span key={ticket.id} className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-black text-sky-900 ring-1 ring-sky-100">
+                  <span key={ticket.id} className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-black text-sky-900 ring-1 ring-sky-100">
                     {formatQueueNumber(ticket.number)}
                   </span>
                 ))
@@ -160,7 +167,7 @@ function ServiceTile({ container, featured = false, highlight = false }: { conta
       layout
       layoutId={`tile-${container.id}`}
       transition={{ layout: { type: 'spring', stiffness: 220, damping: 26 } }}
-      className="relative flex h-full min-h-[280px] flex-col overflow-hidden rounded-[2rem] border border-cyan-200 bg-white/95 p-6 shadow-2xl shadow-cyan-200/40 backdrop-blur-xl xl:p-8"
+      className="relative flex h-full min-h-[240px] flex-col overflow-hidden rounded-[2rem] border border-cyan-200 bg-white/95 p-5 shadow-2xl shadow-cyan-200/40 backdrop-blur-xl xl:p-6"
     >
       <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-cyan-400 via-sky-500 to-amber-300" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(34,211,238,0.20),transparent_34%),radial-gradient(circle_at_88%_82%,rgba(251,191,36,0.18),transparent_36%)]" />
@@ -183,11 +190,11 @@ function ServiceTile({ container, featured = false, highlight = false }: { conta
         <StatusPill paused={container.isPaused} />
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col justify-center py-4 xl:py-6">
+      <div className="relative flex min-h-0 flex-1 flex-col justify-center py-3 xl:py-4">
         <QueueNumber container={container} featured />
-        <div className="mt-4 min-w-0">
-          <p className="truncate text-xl font-black text-slate-950 xl:text-2xl">{container.operator || container.name}</p>
-          <p className="mt-1 truncate text-base font-bold text-slate-600 xl:text-lg">{formatQueueService(container.service)}</p>
+        <div className="mt-3 min-w-0">
+          <p className="truncate text-lg font-black text-slate-950 xl:text-xl">{container.operator || container.name}</p>
+          <p className="mt-1 truncate text-sm font-bold text-slate-600 xl:text-base">{formatQueueService(container.service)}</p>
         </div>
       </div>
 
@@ -306,7 +313,7 @@ export default function QueueDisplayPage() {
         />
       </div>
 
-      <header className="relative z-10 flex h-[84px] items-center justify-between gap-4 px-5 py-3 xl:px-8">
+      <header className="relative z-10 flex h-[76px] items-center justify-between gap-4 px-5 py-3 xl:px-8">
         <div className="flex min-w-0 items-center gap-4">
           <Image src="/logo-smavo.jpeg" alt="SMAN 2 Cibinong" width={64} height={64} className="h-12 w-12 shrink-0 rounded-2xl object-cover shadow-xl xl:h-14 xl:w-14" />
           <div className="min-w-0">
@@ -315,12 +322,12 @@ export default function QueueDisplayPage() {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-3xl font-black leading-none tracking-tight xl:text-5xl">{formatClock(clock)}</p>
+          <p className="text-3xl font-black leading-none tracking-normal xl:text-5xl">{formatClock(clock)}</p>
           <p className="mt-1 text-xs font-bold text-slate-500 xl:text-sm">{formatDate(clock)}</p>
         </div>
       </header>
 
-      <section className="relative z-10 h-[calc(100vh-138px)] px-3 pb-3 sm:px-5 xl:px-8">
+      <section className="relative z-10 h-[calc(100vh-128px)] px-3 pb-3 sm:px-5 xl:px-8">
         {mode === 'grid' ? (
           <div
             className="grid h-full min-h-0 gap-3 overflow-hidden md:gap-4"
@@ -340,17 +347,17 @@ export default function QueueDisplayPage() {
             </AnimatePresence>
           </div>
         ) : (
-          <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,0.7fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] xl:grid-rows-none xl:gap-5">
+          <div className="grid h-full min-h-0 grid-rows-[minmax(250px,0.82fr)_minmax(0,1fr)] gap-3 overflow-hidden xl:grid-cols-[minmax(420px,0.86fr)_minmax(620px,1.14fr)] xl:grid-rows-none xl:gap-5">
             <AnimatePresence mode="popLayout">
               {featuredContainer ? (
                 <ServiceTile key={`featured-${featuredContainer.id}`} container={featuredContainer} featured />
               ) : null}
             </AnimatePresence>
             <div
-              className="grid min-h-0 gap-2 overflow-y-auto pr-1 xl:gap-3"
+              className="grid min-h-0 content-start gap-2 overflow-y-auto pr-1 xl:gap-3"
               style={{
-                gridAutoRows: 'minmax(0, 1fr)',
-                gridTemplateColumns: otherCount > 4 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)',
+                gridAutoRows: otherCount > 8 ? 'minmax(118px, 1fr)' : 'minmax(132px, 1fr)',
+                gridTemplateColumns: otherCount > 2 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)',
               }}
             >
               <AnimatePresence>
