@@ -1,6 +1,16 @@
 import api from './api';
 
 export type QueueStatus = 'WAITING' | 'CALLING' | 'SERVING' | 'DONE' | 'SKIPPED';
+export type QueueCallType = 'NORMAL' | 'CUSTOM' | 'RECALL';
+
+export type QueueCallLog = {
+  id: string;
+  type: QueueCallType;
+  containerId: string;
+  containerName: string;
+  calledAt: string;
+  calledBy?: string;
+};
 
 export type QueueTicket = {
   id: string;
@@ -15,6 +25,9 @@ export type QueueTicket = {
   status: QueueStatus;
   createdAt: string;
   calledAt?: string;
+  calledBy?: string;
+  callType?: QueueCallType;
+  callLogs?: QueueCallLog[];
   finishedAt?: string;
   skippedAt?: string;
   verifiedAt?: string;
@@ -50,9 +63,10 @@ export type QueueContainerConfig = Pick<QueueContainer, 'id' | 'name' | 'service
 
 export type QueueEvent = {
   id: string;
-  type: 'CREATED' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
+  type: 'CREATED' | 'CALLED' | 'CUSTOM_CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
   ticketNumber?: string;
   containerId?: string;
+  actor?: string;
   message: string;
   createdAt: string;
 };
@@ -94,7 +108,7 @@ export const emptyQueueSnapshot: QueueSnapshot = {
     hourlyTraffic: [],
   },
   isOpen: true,
-  generatedAt: new Date().toISOString(),
+  generatedAt: '',
 };
 
 export const QUEUE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -113,6 +127,14 @@ export async function createQueueTicket(input: CreateQueueTicketInput) {
 
 export async function queueAction(containerId: string, action: 'call' | 'next' | 'recall' | 'done' | 'skip') {
   const { data } = await api.post<{ success: boolean; data: QueueTicket; snapshot: QueueSnapshot }>(`/queue/containers/${containerId}/${action}`);
+  return data;
+}
+
+export async function customQueueCall(containerId: string, queueNumber: string) {
+  const { data } = await api.post<{ success: boolean; data: QueueTicket; snapshot: QueueSnapshot }>(
+    `/queue/containers/${containerId}/custom-call`,
+    { queueNumber }
+  );
   return data;
 }
 

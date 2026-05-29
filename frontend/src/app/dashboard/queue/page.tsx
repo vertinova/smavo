@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Clock3,
   FileSpreadsheet,
+  Hash,
   Info,
   ListChecks,
   Loader2,
@@ -31,6 +32,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  customQueueCall,
   pauseContainer,
   formatQueueNumber,
   formatQueueService,
@@ -42,6 +44,7 @@ import {
   updateQueueContainers,
   type QueueContainer,
   type QueueContainerConfig,
+  type QueueCallLog,
   type QueueTicket,
   type QueueVoiceOptions,
   type QueueVoiceStyle,
@@ -102,7 +105,7 @@ const SERVICE_PRESETS = [
   { value: 'Informasi', label: 'Informasi', hint: 'Loket layanan informasi umum.' },
 ];
 
-const MAX_CONTAINERS = 12;
+const MAX_CONTAINERS = 50;
 
 const isOperatorService = (service?: string | null) =>
   formatQueueService(service).trim().toLowerCase() === 'operator';
@@ -115,6 +118,19 @@ const isInformationService = (service?: string | null) =>
 
 const isAccountCreationServiceChoice = (serviceChoice?: string | null) =>
   (serviceChoice ?? '').trim().toLowerCase() === 'pembuatan akun spmb';
+
+function normalizeQueueLookup(value: string, fallbackCode = 'SPMB') {
+  const cleaned = value.trim().toUpperCase().replace(/\s+/g, '');
+  const code = fallbackCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || 'SPMB';
+  if (!cleaned) return '';
+  if (/^\d+$/.test(cleaned)) return `${code}-${cleaned.padStart(3, '0')}`;
+  if (/^[A-Z0-9]+-\d+$/.test(cleaned)) {
+    const [prefix, suffix] = cleaned.split('-');
+    const safePrefix = prefix.replace(/[^A-Z0-9]/g, '').slice(0, 8) || code;
+    return `${safePrefix}-${suffix.padStart(3, '0')}`.replace(/^PPDB-/i, 'SPMB-');
+  }
+  return cleaned.replace(/^PPDB-/i, 'SPMB-');
+}
 
 function toContainerConfig(container: QueueContainer): QueueContainerConfig {
   return {
@@ -171,6 +187,8 @@ function exportTicketsForExcel(tickets: QueueTicket[]) {
     'Pilihan Layanan',
     'Status',
     'Container',
+    'Jenis Panggilan',
+    'Dipanggil Oleh',
     'Dibuat',
     'Dipanggil',
     'Selesai',
@@ -184,6 +202,8 @@ function exportTicketsForExcel(tickets: QueueTicket[]) {
     ticket.serviceChoice ?? formatQueueService(ticket.service),
     ticket.status,
     ticket.containerId,
+    ticket.callType ?? '',
+    ticket.calledBy ?? '',
     formatTicketDateTime(ticket.createdAt),
     formatTicketDateTime(ticket.calledAt),
     formatTicketDateTime(ticket.finishedAt ?? ticket.skippedAt),
@@ -257,11 +277,12 @@ type ContainerCardProps = {
   busy: boolean;
   onSelect: (id: string) => void;
   onAction: (containerId: string, action: ContainerAction) => void;
+  onCustomCall: (container: QueueContainer) => void;
   onPause: (containerId: string, paused: boolean) => void;
   onSpeak: (container: QueueContainer) => void;
 };
 
-function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPause, onSpeak }: ContainerCardProps) {
+function ContainerCard({ container, isSelected, busy, onSelect, onAction, onCustomCall, onPause, onSpeak }: ContainerCardProps) {
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
   const hasWaiting = container.waitingCount > 0;
@@ -332,6 +353,11 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
               ✓ Diverifikasi oleh {active.verifiedBy}
             </p>
           ) : null}
+          {active.callType === 'CUSTOM' ? (
+            <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-cyan-700">
+              Custom oleh {active.calledBy || container.operator}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -343,12 +369,21 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onPaus
           className={`flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br ${accent.gradient} px-3 py-2.5 text-xs font-black text-white shadow-md transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100`}
         >
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Megaphone size={14} />}
-          {active ? 'Aktif' : hasWaiting ? 'Panggil' : 'Kosong'}
+          {active ? 'Aktif' : hasWaiting ? 'Normal' : 'Kosong'}
+        </button>
+        <button
+          disabled={busy || container.isPaused || Boolean(active) || !hasWaiting}
+          onClick={() => onCustomCall(container)}
+          title={active ? 'Selesaikan nomor aktif dulu' : hasWaiting ? 'Panggil nomor antrean tertentu' : 'Antrean kosong'}
+          className="flex items-center justify-center gap-2 rounded-xl bg-surface px-3 py-2.5 text-xs font-black text-foreground ring-1 ring-border transition hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Hash size={14} />
+          Custom
         </button>
         <button
           disabled={busy || !active}
           onClick={() => onAction(container.id, 'done')}
-          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-black text-white shadow-md transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+          className="col-span-2 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-black text-white shadow-md transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
         >
           <CheckCircle2 size={14} />
           Selesai
@@ -396,10 +431,11 @@ type ActiveCallHeroProps = {
   container: QueueContainer | null;
   busy: boolean;
   onAction: (containerId: string, action: ContainerAction) => void;
+  onCustomCall: (container: QueueContainer) => void;
   onSpeak: (container: QueueContainer) => void;
 };
 
-function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroProps) {
+function ActiveCallHero({ container, busy, onAction, onCustomCall, onSpeak }: ActiveCallHeroProps) {
   const active = container?.activeTicket ?? null;
   const accent = accentMap[container?.accent ?? 'cyan'] ?? accentMap.cyan;
   const containerIsOperator = isOperatorService(container?.service);
@@ -465,6 +501,12 @@ function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroPr
                     : (active.serviceChoice ?? formatQueueService(active.service))}
                 </p>
               </div>
+              {active.callType === 'CUSTOM' ? (
+                <div className="rounded-xl bg-cyan-50 px-3 py-2 ring-1 ring-cyan-200">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-700">Panggil Custom</p>
+                  <p className="mt-0.5 truncate text-sm font-black text-cyan-900">{active.calledBy || container?.operator || '-'}</p>
+                </div>
+              ) : null}
             </div>
           ) : (
             <p className="mt-2 max-w-md text-sm font-semibold text-muted">
@@ -474,14 +516,24 @@ function ActiveCallHero({ container, busy, onAction, onSpeak }: ActiveCallHeroPr
         </div>
 
         <div className="flex flex-row flex-wrap items-stretch gap-2 lg:flex-col lg:w-72">
-          <button
-            disabled={busy || !container || container.isPaused || Boolean(active) || !hasWaiting}
-            onClick={() => container && onAction(container.id, 'call')}
-            className={`group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-br ${accent.gradient} px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 lg:py-4 lg:text-base`}
-          >
-            {busy ? <Loader2 size={18} className="animate-spin" /> : <Megaphone size={18} />}
-            {active ? 'Nomor Masih Aktif' : hasWaiting ? 'Panggil Berikutnya' : 'Tidak Ada Antrean'}
-          </button>
+          <div className="grid flex-1 grid-cols-2 gap-2">
+            <button
+              disabled={busy || !container || container.isPaused || Boolean(active) || !hasWaiting}
+              onClick={() => container && onAction(container.id, 'call')}
+              className={`group flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br ${accent.gradient} px-4 py-3.5 text-sm font-black text-white shadow-lg transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 lg:py-4 lg:text-base`}
+            >
+              {busy ? <Loader2 size={18} className="animate-spin" /> : <Megaphone size={18} />}
+              {active ? 'Aktif' : hasWaiting ? 'Normal' : 'Kosong'}
+            </button>
+            <button
+              disabled={busy || !container || container.isPaused || Boolean(active) || !hasWaiting}
+              onClick={() => container && onCustomCall(container)}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-surface px-4 py-3.5 text-sm font-black text-foreground shadow-sm ring-1 ring-border transition hover:bg-card-hover disabled:cursor-not-allowed disabled:opacity-40 lg:py-4 lg:text-base"
+            >
+              <Hash size={18} />
+              Custom
+            </button>
+          </div>
           <button
             disabled={busy || !active}
             onClick={() => container && onAction(container.id, 'done')}
@@ -574,6 +626,7 @@ type RoleSectionProps = {
   emptyMessage: string;
   onSelect: (id: string) => void;
   onAction: (containerId: string, action: ContainerAction) => void;
+  onCustomCall: (container: QueueContainer) => void;
   onPause: (containerId: string, paused: boolean) => void;
   onSpeak: (container: QueueContainer) => void;
   onOpenSettings: () => void;
@@ -610,6 +663,7 @@ function RoleSection({
   emptyMessage,
   onSelect,
   onAction,
+  onCustomCall,
   onPause,
   onSpeak,
   onOpenSettings,
@@ -668,6 +722,7 @@ function RoleSection({
                         busy={busy}
                         onSelect={onSelect}
                         onAction={onAction}
+                        onCustomCall={onCustomCall}
                         onPause={onPause}
                         onSpeak={onSpeak}
                       />
@@ -922,6 +977,148 @@ function ContainerSettingsDrawer({
   );
 }
 
+type CustomCallDialogProps = {
+  open: boolean;
+  container: QueueContainer | null;
+  queueNumber: string;
+  confirming: boolean;
+  busy: boolean;
+  error: string;
+  previewTicket: QueueTicket | null;
+  eligibleTickets: QueueTicket[];
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onStartConfirm: () => void;
+  onConfirm: () => void;
+};
+
+function CustomCallDialog({
+  open,
+  container,
+  queueNumber,
+  confirming,
+  busy,
+  error,
+  previewTicket,
+  eligibleTickets,
+  onChange,
+  onCancel,
+  onStartConfirm,
+  onConfirm,
+}: CustomCallDialogProps) {
+  const formattedInput = normalizeQueueLookup(queueNumber, container?.code ?? 'SPMB');
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+          onClick={onCancel}
+        >
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.94, opacity: 0, y: 10 }}
+            className="w-full max-w-lg overflow-hidden rounded-3xl bg-card shadow-2xl ring-1 ring-border"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-border bg-surface px-5 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-accent">Custom Panggil</p>
+                  <h3 className="mt-1 truncate text-xl font-black text-foreground">{container?.name ?? 'Loket'}</h3>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{formatQueueService(container?.service)} · {eligibleTickets.length} nomor aktif</p>
+                </div>
+                <button type="button" onClick={onCancel} disabled={busy} className="rounded-xl bg-card p-2 text-muted-foreground ring-1 ring-border transition hover:bg-card-hover disabled:opacity-40">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <label className="block">
+                <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-muted">Nomor Antrean</span>
+                <div className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2 focus-within:border-accent/70">
+                  <Hash size={18} className="shrink-0 text-muted-foreground" />
+                  <input
+                    value={queueNumber}
+                    onChange={(event) => onChange(event.target.value)}
+                    disabled={busy || confirming}
+                    autoFocus
+                    placeholder={`${container?.code ?? 'SPMB'}-001 atau 001`}
+                    className="min-w-0 flex-1 bg-transparent py-1 text-lg font-black uppercase text-foreground outline-none placeholder:text-muted-foreground/50"
+                  />
+                </div>
+              </label>
+
+              {formattedInput ? (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted">Preview Nomor</p>
+                    <p className="mt-0.5 truncate text-2xl font-black text-foreground">{formatQueueNumber(formattedInput)}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-black ring-1 ${
+                    previewTicket
+                      ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+                      : 'bg-amber-100 text-amber-800 ring-amber-200'
+                  }`}>
+                    {previewTicket ? 'Terdaftar' : 'Belum cocok'}
+                  </span>
+                </div>
+              ) : null}
+
+              {previewTicket ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Data Antrean</p>
+                  <p className="mt-1 truncate text-sm font-black text-emerald-950">{previewTicket.visitorName}</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-emerald-800">
+                    {previewTicket.phoneNumber || '-'} · {previewTicket.originSchool || '-'}
+                  </p>
+                </div>
+              ) : null}
+
+              {error ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                  {error}
+                </div>
+              ) : null}
+
+              {confirming ? (
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-bold text-cyan-900">
+                  Konfirmasi panggil {previewTicket ? formatQueueNumber(previewTicket.number) : formatQueueNumber(formattedInput)} ke {container?.name}. Panggilan akan langsung tampil realtime dan suara antrean diputar.
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-border bg-surface px-5 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={busy}
+                className="rounded-xl bg-card px-4 py-2 text-sm font-black text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirming ? onConfirm : onStartConfirm}
+                disabled={busy}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-black text-white shadow-md transition hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : confirming ? <Megaphone size={14} /> : <CheckCircle2 size={14} />}
+                {busy ? 'Memanggil...' : confirming ? 'Ya, Panggil Sekarang' : 'Lanjut Konfirmasi'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 type ResetConfirmDialogProps = {
   open: boolean;
   busy: boolean;
@@ -1002,6 +1199,11 @@ export default function QueueDashboardPage() {
   const [showLiveQueue, setShowLiveQueue] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
+  const [customCallTarget, setCustomCallTarget] = useState<QueueContainer | null>(null);
+  const [customQueueNumber, setCustomQueueNumber] = useState('');
+  const [customConfirming, setCustomConfirming] = useState(false);
+  const [customBusy, setCustomBusy] = useState(false);
+  const [customError, setCustomError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1101,9 +1303,50 @@ export default function QueueDashboardPage() {
     [snapshot.tickets]
   );
 
-  const recentHistory = useMemo(
+  const customEligibleTickets = useMemo(() => {
+    if (!customCallTarget) return [];
+    const targetService = formatQueueService(customCallTarget.service).trim().toLowerCase();
+    const isAccountOperator = customCallTarget.id === 'operator-5'
+      || customCallTarget.name.trim().toLowerCase() === 'operator 5'
+      || (isOperatorService(customCallTarget.service) && customCallTarget.name.trim().endsWith('5'));
+
+    return snapshot.tickets
+      .filter((ticket) => {
+        if (ticket.status !== 'WAITING') return false;
+        if (formatQueueService(ticket.service).trim().toLowerCase() !== targetService) return false;
+        if (!isOperatorService(customCallTarget.service)) return true;
+        return isAccountOperator
+          ? isAccountCreationServiceChoice(ticket.serviceChoice)
+          : !isAccountCreationServiceChoice(ticket.serviceChoice);
+      })
+      .sort((a, b) => new Date(a.verifiedAt ?? a.createdAt).getTime() - new Date(b.verifiedAt ?? b.createdAt).getTime());
+  }, [customCallTarget, snapshot.tickets]);
+
+  const customPreviewTicket = useMemo(() => {
+    if (!customCallTarget) return null;
+    const normalized = normalizeQueueLookup(customQueueNumber, customCallTarget.code);
+    if (!normalized) return null;
+    return customEligibleTickets.find((ticket) => normalizeQueueLookup(ticket.number, customCallTarget.code) === normalized) ?? null;
+  }, [customCallTarget, customEligibleTickets, customQueueNumber]);
+
+  const recentCallHistory = useMemo(
     () => snapshot.tickets
-      .filter((ticket) => ['DONE', 'SKIPPED', 'CALLING', 'SERVING'].includes(ticket.status))
+      .flatMap((ticket) => {
+        const logs = ticket.callLogs?.length
+          ? ticket.callLogs
+          : ticket.calledAt
+            ? [{
+              id: `${ticket.id}-called`,
+              type: ticket.callType ?? 'NORMAL',
+              containerId: ticket.containerId,
+              containerName: ticket.containerId,
+              calledAt: ticket.calledAt,
+              calledBy: ticket.calledBy,
+            } satisfies QueueCallLog]
+            : [];
+        return logs.map((log) => ({ ticket, log }));
+      })
+      .sort((a, b) => new Date(b.log.calledAt).getTime() - new Date(a.log.calledAt).getTime())
       .slice(0, 14),
     [snapshot.tickets]
   );
@@ -1140,6 +1383,71 @@ export default function QueueDashboardPage() {
     } catch (error: any) {
       showFeedback(error?.response?.data?.message || 'Aksi gagal dijalankan', 'warn');
     } finally {
+      setBusy(false);
+    }
+  };
+
+  const openCustomCall = (container: QueueContainer) => {
+    setSelectedContainerId(container.id);
+    setCustomCallTarget(container);
+    setCustomQueueNumber('');
+    setCustomConfirming(false);
+    setCustomBusy(false);
+    setCustomError('');
+  };
+
+  const closeCustomCall = () => {
+    if (customBusy) return;
+    setCustomCallTarget(null);
+    setCustomQueueNumber('');
+    setCustomConfirming(false);
+    setCustomError('');
+  };
+
+  const changeCustomQueueNumber = (value: string) => {
+    setCustomQueueNumber(value.toUpperCase());
+    setCustomConfirming(false);
+    setCustomError('');
+  };
+
+  const startCustomConfirm = () => {
+    if (!customCallTarget) return;
+    if (!customQueueNumber.trim()) {
+      setCustomError('Masukkan nomor antrean yang akan dipanggil.');
+      return;
+    }
+    if (!customPreviewTicket) {
+      const normalized = normalizeQueueLookup(customQueueNumber, customCallTarget.code);
+      setCustomError(`Nomor antrean ${formatQueueNumber(normalized)} tidak ditemukan dalam daftar aktif ${customCallTarget.name}.`);
+      return;
+    }
+    setCustomConfirming(true);
+    setCustomError('');
+  };
+
+  const runCustomCall = async () => {
+    if (!customCallTarget || customBusy) return;
+    setCustomBusy(true);
+    setBusy(true);
+    try {
+      const result = await customQueueCall(customCallTarget.id, customQueueNumber);
+      const container = result.snapshot.containers.find((item) => item.id === customCallTarget.id);
+      if (container?.activeTicket) {
+        speakQueueCall(container.activeTicket, container, audioOptions);
+      }
+      setSnapshot(result.snapshot);
+      showFeedback('Nomor custom berhasil dipanggil');
+      setCustomCallTarget(null);
+      setCustomQueueNumber('');
+      setCustomConfirming(false);
+      await refresh();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Nomor antrean custom gagal dipanggil';
+      setCustomError(message);
+      setCustomConfirming(false);
+      showFeedback(message, 'warn');
+    } finally {
+      setCustomBusy(false);
       setBusy(false);
     }
   };
@@ -1352,6 +1660,7 @@ export default function QueueDashboardPage() {
         container={selectedContainer}
         busy={busy}
         onAction={runAction}
+        onCustomCall={openCustomCall}
         onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
       />
 
@@ -1367,6 +1676,7 @@ export default function QueueDashboardPage() {
         emptyMessage="Tambahkan loket Verifikator dari pengaturan loket."
         onSelect={setSelectedContainerId}
         onAction={runAction}
+        onCustomCall={openCustomCall}
         onPause={runPause}
         onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -1385,6 +1695,7 @@ export default function QueueDashboardPage() {
         emptyMessage="Buat loket Operator agar user yang sudah diverifikasi bisa dipanggil."
         onSelect={setSelectedContainerId}
         onAction={runAction}
+        onCustomCall={openCustomCall}
         onPause={runPause}
         onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -1402,6 +1713,7 @@ export default function QueueDashboardPage() {
         emptyMessage="Tambahkan loket Informasi dari pengaturan loket."
         onSelect={setSelectedContainerId}
         onAction={runAction}
+        onCustomCall={openCustomCall}
         onPause={runPause}
         onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -1425,23 +1737,28 @@ export default function QueueDashboardPage() {
           </button>
           {showHistory ? (
             <div className="mt-3 max-h-[340px] space-y-2 overflow-y-auto pr-1">
-              {recentHistory.length ? recentHistory.map((ticket) => {
-                const containerInfo = snapshot.containers.find((container) => container.id === ticket.containerId);
-                const statusTone = ticket.status === 'DONE'
-                  ? 'bg-emerald-500/15 text-emerald-700'
-                  : ticket.status === 'SKIPPED'
-                    ? 'bg-rose-500/15 text-rose-700'
-                    : 'bg-cyan-500/15 text-cyan-700';
+              {recentCallHistory.length ? recentCallHistory.map(({ ticket, log }) => {
+                const containerInfo = snapshot.containers.find((container) => container.id === log.containerId);
+                const statusTone = log.type === 'CUSTOM'
+                  ? 'bg-cyan-500/15 text-cyan-700'
+                  : log.type === 'RECALL'
+                    ? 'bg-amber-500/15 text-amber-700'
+                    : 'bg-emerald-500/15 text-emerald-700';
                 return (
-                  <div key={ticket.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+                  <div key={log.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
                       <p className="truncate text-[11px] font-semibold text-muted-foreground">
                         {ticket.visitorName} · {ticket.phoneNumber || '-'} · {containerInfo?.name ?? ticket.containerId}
                       </p>
+                      {log.type === 'CUSTOM' ? (
+                        <p className="truncate text-[10px] font-bold uppercase tracking-widest text-cyan-700">
+                          Custom oleh {log.calledBy || '-'} - {formatTicketDateTime(log.calledAt)}
+                        </p>
+                      ) : null}
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${statusTone}`}>
-                      {ticket.status}
+                      {log.type}
                     </span>
                   </div>
                 );
@@ -1513,6 +1830,21 @@ export default function QueueDashboardPage() {
         onRemove={removeContainerDraft}
         onReset={resetContainerDraft}
         onSave={saveContainers}
+      />
+
+      <CustomCallDialog
+        open={Boolean(customCallTarget)}
+        container={customCallTarget}
+        queueNumber={customQueueNumber}
+        confirming={customConfirming}
+        busy={customBusy}
+        error={customError}
+        previewTicket={customPreviewTicket}
+        eligibleTickets={customEligibleTickets}
+        onChange={changeCustomQueueNumber}
+        onCancel={closeCustomCall}
+        onStartConfirm={startCustomConfirm}
+        onConfirm={runCustomCall}
       />
 
       <ResetConfirmDialog

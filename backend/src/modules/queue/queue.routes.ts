@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../../middleware/auth.js';
 import { AppError } from '../../lib/errors.js';
 import {
   callNextTicket,
+  callCustomTicket,
   completeTicket,
   createQueueTicket,
   getQueueSnapshot,
@@ -37,11 +38,15 @@ const updateContainersSchema = z.object({
     operator: z.string().max(80).optional(),
     isPaused: z.boolean().optional(),
     accent: z.enum(['cyan', 'violet', 'emerald', 'amber', 'rose']).optional(),
-  })).min(1).max(12),
+  })).min(1).max(50),
 });
 
 const updateQueueStatusSchema = z.object({
   isOpen: z.boolean(),
+});
+
+const customCallSchema = z.object({
+  queueNumber: z.string().min(1).max(24),
 });
 
 function broadcastQueueState() {
@@ -140,6 +145,18 @@ router.post('/containers/:id/next', authenticate, authorize('ADMIN', 'STAF_TU'),
 router.post('/containers/:id/recall', authenticate, authorize('ADMIN', 'STAF_TU'), (req, res, next) => {
   try {
     handleAction(recallTicket(getParamId(req)), res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/containers/:id/custom-call', authenticate, authorize('ADMIN', 'STAF_TU'), (req, res, next) => {
+  try {
+    const payload = customCallSchema.parse(req.body);
+    const actor = req.user?.email ?? req.user?.userId;
+    const result = callCustomTicket(getParamId(req), payload.queueNumber, actor);
+    if (!result.ticket) throw new AppError(result.error || 'Nomor antrean custom tidak dapat dipanggil', 400);
+    handleAction(result.ticket, res);
   } catch (err) {
     next(err);
   }

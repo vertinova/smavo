@@ -19,9 +19,10 @@ const tickerText = [
 ].join('     -     ');
 
 function useClock() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -325,8 +326,8 @@ export default function QueueDisplayPage() {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-3xl font-black leading-none tracking-normal xl:text-5xl">{formatClock(clock)}</p>
-          <p className="mt-1 text-xs font-bold text-slate-500 xl:text-sm">{formatDate(clock)}</p>
+          <p className="text-3xl font-black leading-none tracking-normal xl:text-5xl">{clock ? formatClock(clock) : '--:--:--'}</p>
+          <p className="mt-1 text-xs font-bold text-slate-500 xl:text-sm">{clock ? formatDate(clock) : 'Memuat waktu'}</p>
         </div>
       </header>
 

@@ -2,6 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 type QueueStatus = 'WAITING' | 'CALLING' | 'SERVING' | 'DONE' | 'SKIPPED';
+type QueueCallType = 'NORMAL' | 'CUSTOM' | 'RECALL';
+
+export type QueueCallLog = {
+  id: string;
+  type: QueueCallType;
+  containerId: string;
+  containerName: string;
+  calledAt: string;
+  calledBy?: string;
+};
 
 export type QueueContainer = {
   id: string;
@@ -32,6 +42,9 @@ export type QueueTicket = {
   status: QueueStatus;
   createdAt: string;
   calledAt?: string;
+  calledBy?: string;
+  callType?: QueueCallType;
+  callLogs?: QueueCallLog[];
   finishedAt?: string;
   skippedAt?: string;
   verifiedAt?: string;
@@ -50,9 +63,10 @@ export type QueueTicketInput = {
 
 export type QueueEvent = {
   id: string;
-  type: 'CREATED' | 'CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
+  type: 'CREATED' | 'CALLED' | 'CUSTOM_CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
   ticketNumber?: string;
   containerId?: string;
+  actor?: string;
   message: string;
   createdAt: string;
 };
@@ -269,6 +283,18 @@ function normalizeCode(value: string, fallback: string) {
   return cleaned || fallback;
 }
 
+function normalizeQueueNumber(value: string, fallbackCode: string) {
+  const cleaned = value.trim().toUpperCase().replace(/\s+/g, '');
+  const safeCode = normalizeCode(fallbackCode, 'SPMB');
+  if (!cleaned) return '';
+  if (/^\d+$/.test(cleaned)) return `${safeCode}-${cleaned.padStart(3, '0')}`;
+  if (/^[A-Z0-9]+-\d+$/.test(cleaned)) {
+    const [code, suffix] = cleaned.split('-');
+    return `${normalizeCode(code, safeCode)}-${suffix.padStart(3, '0')}`;
+  }
+  return cleaned.replace(/^PPDB-/i, 'SPMB-');
+}
+
 function normalizeService(value: string) {
   return value.trim().toUpperCase();
 }
@@ -346,6 +372,20 @@ function activeFor(containerId: string) {
 function updateTicket(id: string, patch: Partial<QueueTicket>) {
   tickets = tickets.map((ticket) => ticket.id === id ? { ...ticket, ...patch } : ticket);
   return tickets.find((ticket) => ticket.id === id) ?? null;
+}
+
+function appendCallLog(ticket: QueueTicket, container: QueueContainer, type: QueueCallType, calledAt: string, calledBy?: string) {
+  return [
+    ...(ticket.callLogs ?? []),
+    {
+      id: makeId('call'),
+      type,
+      containerId: container.id,
+      containerName: container.name,
+      calledAt,
+      calledBy,
+    },
+  ].slice(-30);
 }
 
 function finishActiveTicket(containerId: string) {
@@ -538,7 +578,14 @@ export function callNextTicket(containerId: string) {
   const next = waitingFor(containerId)[0];
   if (!next) return null;
 
-  const called = updateTicket(next.id, { containerId, status: 'CALLING', calledAt: nowIso() });
+  const calledAt = nowIso();
+  const called = updateTicket(next.id, {
+    containerId,
+    status: 'CALLING',
+    calledAt,
+    callType: 'NORMAL',
+    callLogs: appendCallLog(next, container, 'NORMAL', calledAt),
+  });
   addEvent({
     type: 'CALLED',
     ticketNumber: called?.number,
@@ -549,12 +596,63 @@ export function callNextTicket(containerId: string) {
   return called;
 }
 
+export function callCustomTicket(containerId: string, queueNumber: string, actor?: string) {
+  const container = containers.find((item) => item.id === containerId);
+  if (!container) return { ticket: null, error: 'Container antrean tidak ditemukan' };
+  if (container.isPaused) return { ticket: null, error: 'Loket sedang pause. Aktifkan loket sebelum memanggil antrean.' };
+  if (activeFor(containerId)) return { ticket: null, error: 'Selesaikan atau lewati nomor aktif sebelum memanggil nomor custom.' };
+
+  const normalizedNumber = normalizeQueueNumber(queueNumber, container.code);
+  if (!normalizedNumber) return { ticket: null, error: 'Nomor antrean wajib diisi.' };
+
+  const eligibleTicket = waitingFor(containerId).find((ticket) => normalizeQueueNumber(ticket.number, container.code) === normalizedNumber);
+  if (!eligibleTicket) {
+    const registeredTicket = todayTickets().find((ticket) => normalizeQueueNumber(ticket.number, container.code) === normalizedNumber);
+    if (!registeredTicket) {
+      return { ticket: null, error: `Nomor antrean ${normalizedNumber} tidak ditemukan pada data antrean aktif.` };
+    }
+
+    if (registeredTicket.status !== 'WAITING') {
+      return { ticket: null, error: `Nomor antrean ${normalizedNumber} sudah dipanggil, selesai, atau tidak lagi menunggu.` };
+    }
+
+    return { ticket: null, error: `Nomor antrean ${normalizedNumber} tidak berada dalam daftar aktif ${container.name}.` };
+  }
+
+  const calledAt = nowIso();
+  const calledBy = actor?.trim() || container.operator || container.name;
+  const called = updateTicket(eligibleTicket.id, {
+    containerId,
+    status: 'CALLING',
+    calledAt,
+    calledBy,
+    callType: 'CUSTOM',
+    callLogs: appendCallLog(eligibleTicket, container, 'CUSTOM', calledAt, calledBy),
+  });
+
+  addEvent({
+    type: 'CUSTOM_CALLED',
+    ticketNumber: called?.number,
+    containerId,
+    actor: calledBy,
+    message: `${called?.number} dipanggil custom ke ${container.name} oleh ${calledBy}`,
+  });
+  persistQueueState();
+  return { ticket: called, error: null };
+}
+
 export function recallTicket(containerId: string) {
   const container = containers.find((item) => item.id === containerId);
   const active = activeFor(containerId);
   if (!container || !active) return null;
 
-  const recalled = updateTicket(active.id, { status: 'CALLING', calledAt: nowIso() });
+  const calledAt = nowIso();
+  const recalled = updateTicket(active.id, {
+    status: 'CALLING',
+    calledAt,
+    callType: 'RECALL',
+    callLogs: appendCallLog(active, container, 'RECALL', calledAt),
+  });
   addEvent({
     type: 'RECALLED',
     ticketNumber: active.number,
@@ -583,6 +681,8 @@ export function completeTicket(containerId: string) {
       verifiedAt,
       verifiedBy: container.name,
       calledAt: undefined,
+      calledBy: undefined,
+      callType: undefined,
       finishedAt: undefined,
     });
     if (!verified) return null;
