@@ -59,6 +59,7 @@ export type QueueTicketInput = {
   originSchool?: string;
   registrationPath?: string;
   serviceChoice?: string;
+  clientToken?: string;
 };
 
 export type QueueEvent = {
@@ -577,7 +578,42 @@ export function updateQueueContainers(inputs: QueueContainerInput[]) {
   return containers;
 }
 
+
+// Idempotency cache: token → ticket. Prevents duplicate creation when the
+// same client submits twice within the window (e.g. fast double-click, axios
+// retry after a timeout, browser reload during submission).
+const TICKET_IDEMPOTENCY_TTL_MS = 60_000;
+const recentTicketTokens = new Map<string, { ticket: QueueTicket; expiresAt: number }>();
+
+function cleanupExpiredTicketTokens() {
+  const now = Date.now();
+  for (const [key, value] of recentTicketTokens) {
+    if (value.expiresAt <= now) recentTicketTokens.delete(key);
+  }
+}
+
+function rememberTicketToken(token: string, ticket: QueueTicket) {
+  if (!token) return;
+  recentTicketTokens.set(token, { ticket, expiresAt: Date.now() + TICKET_IDEMPOTENCY_TTL_MS });
+}
+
+function lookupTicketToken(token?: string): QueueTicket | null {
+  if (!token) return null;
+  cleanupExpiredTicketTokens();
+  const cached = recentTicketTokens.get(token);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    recentTicketTokens.delete(token);
+    return null;
+  }
+  return cached.ticket;
+}
+
 export function createQueueTicket(input: QueueTicketInput) {
+  // Idempotency: same clientToken within TICKET_IDEMPOTENCY_TTL_MS returns the previously issued ticket.
+  const cachedByToken = lookupTicketToken(input.clientToken);
+  if (cachedByToken) return cachedByToken;
+
   const initialService = getInitialService(input);
   const accountContainer = normalizeService(input.serviceChoice ?? '') === ACCOUNT_SERVICE_CHOICE
     ? getAccountCreationContainer()
@@ -611,6 +647,8 @@ export function createQueueTicket(input: QueueTicketInput) {
     message: `${ticket.number} masuk ke antrean ${ticket.service}`,
   });
   persistQueueState();
+
+  if (input.clientToken) rememberTicketToken(input.clientToken, ticket);
 
   return ticket;
 }

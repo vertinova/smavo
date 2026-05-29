@@ -42,6 +42,7 @@ export type CreateQueueTicketInput = {
   originSchool?: string;
   registrationPath?: string;
   serviceChoice?: string;
+  clientToken?: string;
 };
 
 export type QueueContainer = {
@@ -123,8 +124,14 @@ export async function fetchQueueState() {
 }
 
 export async function createQueueTicket(input: CreateQueueTicketInput) {
+  // Idempotency: auto-generate a clientToken if caller did not provide one.
+  // Same token sent twice within the backend dedup window returns the same ticket.
+  const clientToken = input.clientToken ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `t-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
   const { data } = await api.post<{ success: boolean; data: QueueTicket; snapshot: QueueSnapshot }>('/queue/tickets', {
     ...input,
+    clientToken,
   });
   return data;
 }

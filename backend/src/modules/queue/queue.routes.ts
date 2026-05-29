@@ -29,6 +29,7 @@ const createTicketSchema = z.object({
   registrationPath: z.string().min(2).max(80).optional(),
   serviceChoice: z.string().min(2).max(80).optional(),
   containerId: z.string().optional(),
+  clientToken: z.string().min(8).max(80).optional(),
 });
 
 const updateContainersSchema = z.object({
