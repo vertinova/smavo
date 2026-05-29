@@ -347,6 +347,7 @@ function todayTickets() {
 // Apply offline-mode filter: hide tickets created after offline mode was toggled on.
 // Used for admin-facing views (panggil berikutnya & dashboard snapshot) so operators
 // can focus on existing backlog without distraction from new incoming tickets.
+// Note: antrean berlanjut lintas hari (tidak di-reset) — tidak ada filter per-tanggal.
 function visibleTickets(): QueueTicket[] {
   if (!isOfflineMode || !offlineSinceIso) return tickets;
   const cutoff = offlineSinceIso;
@@ -422,7 +423,8 @@ function finishActiveTicket(containerId: string) {
 
 function getHighestIssuedNumber(code: string) {
   const prefix = `${code}-`;
-  return todayTickets()
+  // Semua tiket lintas hari → nomor tertinggi tidak reset tiap hari.
+  return tickets
     .filter((ticket) => ticket.number.startsWith(prefix))
     .reduce((highest, ticket) => {
       const suffix = Number(ticket.number.slice(prefix.length));
@@ -431,8 +433,10 @@ function getHighestIssuedNumber(code: string) {
 }
 
 function makeNextQueueNumber(code: string) {
-  const counterKey = `${code}-${new Date().toISOString().slice(0, 10)}`;
-  const usedNumbers = new Set(todayTickets().map((ticket) => ticket.number));
+  // Counter per kode loket (tanpa tanggal) supaya nomor antrean tidak
+  // restart tiap hari — penomoran berlanjut terus.
+  const counterKey = code;
+  const usedNumbers = new Set(tickets.map((ticket) => ticket.number));
   let nextNumber = Math.max(counters.get(counterKey) ?? 0, getHighestIssuedNumber(code));
   let formatted = '';
 
@@ -691,7 +695,7 @@ export function callCustomTicket(containerId: string, queueNumber: string, actor
 
   const eligibleTicket = waitingFor(containerId).find((ticket) => normalizeQueueNumber(ticket.number, container.code) === normalizedNumber);
   if (!eligibleTicket) {
-    const registeredTicket = todayTickets().find((ticket) => normalizeQueueNumber(ticket.number, container.code) === normalizedNumber);
+    const registeredTicket = visibleTickets().find((ticket) => normalizeQueueNumber(ticket.number, container.code) === normalizedNumber);
     if (!registeredTicket) {
       return { ticket: null, error: `Nomor antrean ${normalizedNumber} tidak ditemukan pada data antrean aktif.` };
     }
