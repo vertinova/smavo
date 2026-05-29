@@ -88,6 +88,8 @@ export type QueueSnapshot = {
     hourlyTraffic: { hour: string; total: number; done: number }[];
   };
   isOpen: boolean;
+  isOfflineMode: boolean;
+  offlineSinceIso: string | null;
   generatedAt: string;
 };
 
@@ -108,6 +110,8 @@ export const emptyQueueSnapshot: QueueSnapshot = {
     hourlyTraffic: [],
   },
   isOpen: true,
+  isOfflineMode: false,
+  offlineSinceIso: null,
   generatedAt: '',
 };
 
@@ -145,6 +149,11 @@ export async function pauseContainer(containerId: string, paused: boolean) {
 
 export async function setQueueOpen(isOpen: boolean) {
   const { data } = await api.post<{ success: boolean; data: { isOpen: boolean }; snapshot: QueueSnapshot }>('/queue/status', { isOpen });
+  return data;
+}
+
+export async function setOfflineMode(isOfflineMode: boolean) {
+  const { data } = await api.post<{ success: boolean; data: { isOfflineMode: boolean; offlineSinceIso: string | null }; snapshot: QueueSnapshot }>('/queue/mode', { isOfflineMode });
   return data;
 }
 

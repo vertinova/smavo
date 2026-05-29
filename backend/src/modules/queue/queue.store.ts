@@ -94,6 +94,8 @@ type QueueSnapshot = {
     hourlyTraffic: { hour: string; total: number; done: number }[];
   };
   isOpen: boolean;
+  isOfflineMode: boolean;
+  offlineSinceIso: string | null;
   generatedAt: string;
 };
 
@@ -103,6 +105,8 @@ type PersistedQueueState = {
   events?: QueueEvent[];
   counters?: Array<[string, number]>;
   isOpen?: boolean;
+  isOfflineMode?: boolean;
+  offlineSinceIso?: string | null;
 };
 
 const accents = ['cyan', 'violet', 'emerald', 'amber', 'rose'];
@@ -128,6 +132,8 @@ let containers: QueueContainer[] = [
 let tickets: QueueTicket[] = [];
 let events: QueueEvent[] = [];
 let isOpen = true;
+let isOfflineMode = false;
+let offlineSinceIso: string | null = null;
 const counters = new Map<string, number>();
 
 function loadQueueState() {
@@ -139,6 +145,10 @@ function loadQueueState() {
     if (Array.isArray(parsed.tickets)) tickets = parsed.tickets;
     if (Array.isArray(parsed.events)) events = parsed.events;
     if (typeof parsed.isOpen === 'boolean') isOpen = parsed.isOpen;
+    if (typeof parsed.isOfflineMode === 'boolean') isOfflineMode = parsed.isOfflineMode;
+    if (typeof parsed.offlineSinceIso === 'string' || parsed.offlineSinceIso === null) {
+      offlineSinceIso = parsed.offlineSinceIso ?? null;
+    }
     if (Array.isArray(parsed.counters)) {
       counters.clear();
       parsed.counters.forEach(([key, value]) => {
@@ -159,6 +169,8 @@ function persistQueueState() {
       events,
       counters: [...counters.entries()],
       isOpen,
+      isOfflineMode,
+      offlineSinceIso,
     };
     fs.writeFileSync(queueStateFile, JSON.stringify(payload, null, 2));
   } catch (error) {
@@ -331,6 +343,15 @@ function todayTickets() {
   return tickets.filter((ticket) => sameDay(ticket.createdAt));
 }
 
+// Apply offline-mode filter: hide tickets created after offline mode was toggled on.
+// Used for admin-facing views (panggil berikutnya & dashboard snapshot) so operators
+// can focus on existing backlog without distraction from new incoming tickets.
+function visibleTickets(): QueueTicket[] {
+  if (!isOfflineMode || !offlineSinceIso) return tickets;
+  const cutoff = offlineSinceIso;
+  return tickets.filter((ticket) => ticket.createdAt < cutoff);
+}
+
 function getTicketSequence(ticket: QueueTicket) {
   const suffix = Number(ticket.number.split('-').pop());
   return Number.isFinite(suffix) ? suffix : Number.MAX_SAFE_INTEGER;
@@ -353,8 +374,10 @@ function waitingFor(containerId: string) {
   const serviceKey = normalizeService(container.service);
   const accountContainerId = getAccountCreationContainer()?.id;
 
-  // cross-day backlog: pakai semua tiket, bukan hanya hari ini
-  return tickets
+  // cross-day backlog: pakai semua tiket, bukan hanya hari ini.
+  // Saat offline mode aktif, tiket baru yg masuk setelah toggle disembunyikan dari
+  // operator (lihat visibleTickets()) supaya fokus selesaikan backlog dulu.
+  return visibleTickets()
     .filter((ticket) => {
       if (ticket.status !== 'WAITING' || normalizeService(ticket.service) !== serviceKey) return false;
       if (!accountContainerId) return true;
@@ -450,6 +473,7 @@ function getHourlyTraffic(allTickets: QueueTicket[]) {
 
 export function getQueueSnapshot(): QueueSnapshot {
   const allToday = todayTickets();
+  const visible = visibleTickets();
   const done = allToday.filter((ticket) => ticket.status === 'DONE');
   const skipped = allToday.filter((ticket) => ticket.status === 'SKIPPED');
   const hourlyTraffic = getHourlyTraffic(allToday);
@@ -464,13 +488,13 @@ export function getQueueSnapshot(): QueueSnapshot {
       doneCount: done.filter((ticket) => ticket.containerId === container.id).length,
       skippedCount: skipped.filter((ticket) => ticket.containerId === container.id).length,
     })),
-    tickets: [...tickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    tickets: [...visible].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     events,
     analytics: {
       totalToday: allToday.length,
-      waiting: tickets.filter((ticket) => ticket.status === 'WAITING').length,
-      calling: tickets.filter((ticket) => ticket.status === 'CALLING').length,
-      serving: tickets.filter((ticket) => ticket.status === 'SERVING').length,
+      waiting: visible.filter((ticket) => ticket.status === 'WAITING').length,
+      calling: visible.filter((ticket) => ticket.status === 'CALLING').length,
+      serving: visible.filter((ticket) => ticket.status === 'SERVING').length,
       done: done.length,
       skipped: skipped.length,
       activeContainers: containers.filter((container) => !container.isPaused).length,
@@ -479,12 +503,32 @@ export function getQueueSnapshot(): QueueSnapshot {
       hourlyTraffic,
     },
     isOpen,
+    isOfflineMode,
+    offlineSinceIso,
     generatedAt: nowIso(),
   };
 }
 
 export function isQueueOpen() {
   return isOpen;
+}
+
+export function getOfflineMode() {
+  return { isOfflineMode, offlineSinceIso };
+}
+
+export function setOfflineMode(value: boolean) {
+  if (isOfflineMode === value) return { isOfflineMode, offlineSinceIso };
+  isOfflineMode = value;
+  offlineSinceIso = value ? nowIso() : null;
+  addEvent({
+    type: value ? 'PAUSED' : 'RESUMED',
+    message: value
+      ? 'Mode Offline aktif: tiket baru ditahan dari dashboard sampai mode dikembalikan ke Online.'
+      : 'Mode Online aktif: tiket baru yang masuk selama mode offline ditampilkan kembali.',
+  });
+  persistQueueState();
+  return { isOfflineMode, offlineSinceIso };
 }
 
 export function setQueueOpen(open: boolean) {

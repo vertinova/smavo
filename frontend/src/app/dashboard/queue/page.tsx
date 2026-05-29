@@ -29,6 +29,8 @@ import {
   Trash2,
   UsersRound,
   Volume2,
+  Wifi,
+  WifiOff,
   X,
 } from 'lucide-react';
 import {
@@ -39,6 +41,7 @@ import {
   queueAction,
   resetQueueState,
   setQueueOpen as updateQueueOpen,
+  setOfflineMode,
   speakQueueCall,
   unlockQueueAudio,
   updateQueueContainers,
@@ -1501,6 +1504,24 @@ export default function QueueDashboardPage() {
     }
   };
 
+  const toggleOfflineMode = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await setOfflineMode(!snapshot.isOfflineMode);
+      setSnapshot(result.snapshot);
+      showFeedback(
+        result.snapshot.isOfflineMode
+          ? 'Mode Offline aktif: tiket baru ditahan dari dashboard'
+          : 'Mode Online aktif: tiket baru ditampilkan kembali',
+      );
+    } catch (error: any) {
+      showFeedback(error?.response?.data?.message || 'Gagal mengubah mode', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const enableAudio = () => {
     const enabled = unlockQueueAudio(audioOptions);
     setAudioEnabled(enabled);
@@ -1574,6 +1595,28 @@ export default function QueueDashboardPage() {
 
   return (
     <div className="space-y-4 lg:space-y-5">
+      {snapshot.isOfflineMode ? (
+        <div className="flex items-center gap-3 rounded-xl border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm">
+          <WifiOff size={18} className="shrink-0 text-amber-600" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-black uppercase tracking-wider">Mode Offline Aktif</p>
+            <p className="mt-0.5 text-xs font-semibold">
+              Tiket baru ditahan dari dashboard sampai mode dikembalikan ke Online. Aksi panggil/lewati/custom/selesai tetap berfungsi normal.
+            </p>
+          </div>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={toggleOfflineMode}
+              disabled={busy}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-black text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-70"
+            >
+              {busy ? <Loader2 size={12} className="animate-spin" /> : <Wifi size={12} />}
+              Aktifkan Online
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-accent">
@@ -1602,6 +1645,22 @@ export default function QueueDashboardPage() {
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : snapshot.isOpen ? <Pause size={14} /> : <Play size={14} />}
               {snapshot.isOpen ? 'Tutup Antrean' : 'Buka Antrean'}
+            </button>
+          ) : null}
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={toggleOfflineMode}
+              disabled={busy}
+              title={snapshot.isOfflineMode ? 'Kembali ke Mode Online (tampilkan tiket baru)' : 'Aktifkan Mode Offline (tahan tiket baru dari dashboard)'}
+              className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black shadow-sm transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70 ${
+                snapshot.isOfflineMode
+                  ? 'bg-amber-500 text-white shadow-amber-500/30 hover:bg-amber-600'
+                  : 'bg-emerald-500 text-white shadow-emerald-500/30 hover:bg-emerald-600'
+              }`}
+            >
+              {busy ? <Loader2 size={14} className="animate-spin" /> : snapshot.isOfflineMode ? <WifiOff size={14} /> : <Wifi size={14} />}
+              {snapshot.isOfflineMode ? 'Mode Offline' : 'Mode Online'}
             </button>
           ) : null}
           <button

@@ -12,6 +12,7 @@ import {
   recallTicket,
   resetQueueState,
   setContainerPaused,
+  setOfflineMode,
   setQueueOpen,
   skipTicket,
   updateQueueContainers,
@@ -43,6 +44,10 @@ const updateContainersSchema = z.object({
 
 const updateQueueStatusSchema = z.object({
   isOpen: z.boolean(),
+});
+
+const updateOfflineModeSchema = z.object({
+  isOfflineMode: z.boolean(),
 });
 
 const customCallSchema = z.object({
@@ -110,6 +115,20 @@ router.post('/status', authenticate, authorize('ADMIN'), (req, res, next) => {
     const isOpen = setQueueOpen(payload.isOpen);
     broadcastQueueState();
     res.json({ success: true, data: { isOpen }, snapshot: getQueueSnapshot() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Toggle offline mode (global across all admin dashboards).
+// Saat offline, dashboard menyembunyikan tiket baru yang masuk setelah toggle,
+// supaya operator fokus selesaikan backlog. Aksi panggil/lewati/dll tetap jalan via server.
+router.post('/mode', authenticate, authorize('ADMIN'), (req, res, next) => {
+  try {
+    const payload = updateOfflineModeSchema.parse(req.body);
+    const result = setOfflineMode(payload.isOfflineMode);
+    broadcastQueueState();
+    res.json({ success: true, data: result, snapshot: getQueueSnapshot() });
   } catch (err) {
     next(err);
   }
