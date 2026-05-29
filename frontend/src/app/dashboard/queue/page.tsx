@@ -168,6 +168,14 @@ function formatTicketDateTime(value?: string) {
   }).format(new Date(value));
 }
 
+function formatTicketDate(value?: string) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date(value));
+}
+
 function escapeExcelCell(value: unknown) {
   const text = String(value ?? '');
   return text
@@ -331,6 +339,11 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onCust
               {active ? formatQueueNumber(active.number) : '---'}
             </motion.p>
           </AnimatePresence>
+          {active ? (
+            <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Daftar {formatTicketDate(active.createdAt)}
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 text-right">
           <div className={`rounded-lg px-2 py-1 text-center text-[10px] font-black ring-1 ${accent.chip}`}>
@@ -471,6 +484,11 @@ function ActiveCallHero({ container, busy, onAction, onCustomCall, onSpeak }: Ac
               <p className={`truncate text-5xl font-black leading-none tracking-tight lg:text-7xl ${active ? 'text-foreground' : 'text-muted/40'}`}>
                 {active ? formatQueueNumber(active.number) : '---'}
               </p>
+              {active ? (
+                <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  Tanggal Daftar: {formatTicketDate(active.createdAt)}
+                </p>
+              ) : null}
             </motion.div>
           </AnimatePresence>
           {active ? (
@@ -581,7 +599,10 @@ function WaitingChip({ ticket, highlightVerified }: WaitingChipProps) {
     <div className="rounded-xl border border-border bg-surface px-3 py-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+          <div className="flex items-baseline gap-1.5">
+            <p className="truncate text-sm font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+            <span className="shrink-0 text-[10px] font-bold text-muted-foreground">{formatTicketDate(ticket.createdAt)}</span>
+          </div>
           <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{ticket.visitorName}</p>
         </div>
         {highlightVerified ? (
