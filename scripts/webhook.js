@@ -71,13 +71,13 @@ const server = http.createServer((req, res) => {
     res.writeHead(200);
     res.end('Deploy triggered');
 
-    log('🚀 Starting deploy...');
-    const cmd = `cd ${PROJECT_DIR} && git pull origin main && docker compose build && docker compose up -d --remove-orphans 2>&1 >> ${LOG_FILE}`;
-    exec(cmd, { timeout: 600000 }, (err, stdout, stderr) => {
+    log('🚀 Starting deploy via scripts/deploy.sh...');
+    const cmd = `bash ${PROJECT_DIR}/scripts/deploy.sh`;
+    exec(cmd, { timeout: 900000, env: { ...process.env, LOG_FILE, PROJECT_DIR } }, (err, stdout, stderr) => {
       if (err) {
-        log(`❌ Deploy failed: ${err.message}`);
+        log(`❌ Deploy script failed: ${err.message}`);
       } else {
-        log('✅ Deploy completed successfully');
+        log('✅ Deploy script reported success');
       }
     });
   });
