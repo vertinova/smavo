@@ -1,7 +1,7 @@
 import api from './api';
 
 export type QueueStatus = 'WAITING' | 'CALLING' | 'SERVING' | 'DONE' | 'SKIPPED';
-export type QueueCallType = 'NORMAL' | 'CUSTOM' | 'RECALL';
+export type QueueCallType = 'NORMAL' | 'CUSTOM' | 'RECALL' | 'CALLBACK';
 
 export type QueueCallLog = {
   id: string;
@@ -137,6 +137,14 @@ export async function queueAction(containerId: string, action: 'call' | 'next' |
 export async function customQueueCall(containerId: string, queueNumber: string) {
   const { data } = await api.post<{ success: boolean; data: QueueTicket; snapshot: QueueSnapshot }>(
     `/queue/containers/${containerId}/custom-call`,
+    { queueNumber }
+  );
+  return data;
+}
+
+export async function callBackQueue(containerId: string, queueNumber: string) {
+  const { data } = await api.post<{ success: boolean; data: QueueTicket; snapshot: QueueSnapshot }>(
+    `/queue/containers/${containerId}/call-back`,
     { queueNumber }
   );
   return data;

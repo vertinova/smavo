@@ -27,6 +27,7 @@ import {
   SkipForward,
   Sparkles,
   Trash2,
+  Undo2,
   UsersRound,
   Volume2,
   Wifi,
@@ -34,6 +35,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  callBackQueue,
   customQueueCall,
   pauseContainer,
   formatQueueNumber,
@@ -289,11 +291,12 @@ type ContainerCardProps = {
   onSelect: (id: string) => void;
   onAction: (containerId: string, action: ContainerAction) => void;
   onCustomCall: (container: QueueContainer) => void;
+  onCallBack: (container: QueueContainer) => void;
   onPause: (containerId: string, paused: boolean) => void;
   onSpeak: (container: QueueContainer) => void;
 };
 
-function ContainerCard({ container, isSelected, busy, onSelect, onAction, onCustomCall, onPause, onSpeak }: ContainerCardProps) {
+function ContainerCard({ container, isSelected, busy, onSelect, onAction, onCustomCall, onCallBack, onPause, onSpeak }: ContainerCardProps) {
   const accent = accentMap[container.accent] ?? accentMap.cyan;
   const active = container.activeTicket;
   const hasWaiting = container.waitingCount > 0;
@@ -395,6 +398,15 @@ function ContainerCard({ container, isSelected, busy, onSelect, onAction, onCust
         >
           <Hash size={14} />
           Custom
+        </button>
+        <button
+          disabled={busy || container.isPaused || Boolean(active)}
+          onClick={() => onCallBack(container)}
+          title={active ? 'Selesaikan nomor aktif dulu' : 'Panggil kembali nomor yang sudah dilewati'}
+          className="col-span-2 flex items-center justify-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs font-black text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Undo2 size={14} />
+          Panggil Kembali
         </button>
         <button
           disabled={busy || !active}
@@ -651,6 +663,7 @@ type RoleSectionProps = {
   onSelect: (id: string) => void;
   onAction: (containerId: string, action: ContainerAction) => void;
   onCustomCall: (container: QueueContainer) => void;
+  onCallBack: (container: QueueContainer) => void;
   onPause: (containerId: string, paused: boolean) => void;
   onSpeak: (container: QueueContainer) => void;
   onOpenSettings: () => void;
@@ -688,6 +701,7 @@ function RoleSection({
   onSelect,
   onAction,
   onCustomCall,
+  onCallBack,
   onPause,
   onSpeak,
   onOpenSettings,
@@ -747,6 +761,7 @@ function RoleSection({
                         onSelect={onSelect}
                         onAction={onAction}
                         onCustomCall={onCustomCall}
+                        onCallBack={onCallBack}
                         onPause={onPause}
                         onSpeak={onSpeak}
                       />
@@ -1143,6 +1158,104 @@ function CustomCallDialog({
   );
 }
 
+type CallBackDialogProps = {
+  open: boolean;
+  container: QueueContainer | null;
+  skippedTickets: QueueTicket[];
+  busy: boolean;
+  error: string;
+  onCancel: () => void;
+  onSelect: (queueNumber: string) => void;
+};
+
+function CallBackDialog({ open, container, skippedTickets, busy, error, onCancel, onSelect }: CallBackDialogProps) {
+  return (
+    <AnimatePresence>
+      {open && container ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+          onClick={onCancel}
+        >
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.94, opacity: 0, y: 10 }}
+            className="w-full max-w-lg overflow-hidden rounded-3xl bg-card shadow-2xl ring-1 ring-border"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-border bg-surface px-5 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-700">Panggil Kembali Nomor Dilewati</p>
+                  <h3 className="mt-1 truncate text-xl font-black text-foreground">{container.name}</h3>
+                  <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{formatQueueService(container.service)} · {skippedTickets.length} nomor dilewati</p>
+                </div>
+                <button type="button" onClick={onCancel} disabled={busy} className="rounded-xl bg-card p-2 text-muted-foreground ring-1 ring-border transition hover:bg-card-hover disabled:opacity-40">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[55vh] overflow-y-auto px-5 py-4">
+              {error ? (
+                <div className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                  {error}
+                </div>
+              ) : null}
+
+              {skippedTickets.length ? (
+                <div className="space-y-2">
+                  {skippedTickets.map((ticket) => (
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => onSelect(ticket.number)}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-left transition hover:border-amber-400 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-baseline gap-1.5">
+                          <p className="truncate text-lg font-black text-foreground">{formatQueueNumber(ticket.number)}</p>
+                          <span className="shrink-0 text-[10px] font-bold text-muted-foreground">{formatTicketDate(ticket.createdAt)}</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{ticket.visitorName}</p>
+                        <p className="mt-0.5 truncate text-[11px] font-semibold text-muted-foreground">
+                          {ticket.originSchool || '—'} · Dilewati {ticket.skippedAt ? formatTicketDateTime(ticket.skippedAt) : '—'}
+                        </p>
+                      </div>
+                      <div className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md">
+                        <Undo2 size={16} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-10 text-center text-sm font-semibold text-muted-foreground">
+                  Tidak ada nomor yang dilewati untuk layanan {formatQueueService(container.service)}.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-border bg-surface px-5 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={busy}
+                className="rounded-xl bg-card px-4 py-2 text-sm font-black text-muted-foreground ring-1 ring-border transition hover:bg-card-hover hover:text-foreground disabled:opacity-40"
+              >
+                Tutup
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 type ResetConfirmDialogProps = {
   open: boolean;
   busy: boolean;
@@ -1228,6 +1341,9 @@ export default function QueueDashboardPage() {
   const [customConfirming, setCustomConfirming] = useState(false);
   const [customBusy, setCustomBusy] = useState(false);
   const [customError, setCustomError] = useState('');
+  const [callBackTarget, setCallBackTarget] = useState<QueueContainer | null>(null);
+  const [callBackBusy, setCallBackBusy] = useState(false);
+  const [callBackError, setCallBackError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1346,6 +1462,15 @@ export default function QueueDashboardPage() {
       .sort((a, b) => new Date(a.verifiedAt ?? a.createdAt).getTime() - new Date(b.verifiedAt ?? b.createdAt).getTime());
   }, [customCallTarget, snapshot.tickets]);
 
+  const callBackEligibleTickets = useMemo(() => {
+    if (!callBackTarget) return [];
+    const targetService = formatQueueService(callBackTarget.service).trim().toLowerCase();
+    return snapshot.tickets
+      .filter((ticket) => ticket.status === 'SKIPPED' && formatQueueService(ticket.service).trim().toLowerCase() === targetService)
+      .sort((a, b) => new Date(b.skippedAt ?? b.createdAt).getTime() - new Date(a.skippedAt ?? a.createdAt).getTime())
+      .slice(0, 50);
+  }, [callBackTarget, snapshot.tickets]);
+
   const customPreviewTicket = useMemo(() => {
     if (!customCallTarget) return null;
     const normalized = normalizeQueueLookup(customQueueNumber, customCallTarget.code);
@@ -1426,6 +1551,44 @@ export default function QueueDashboardPage() {
     setCustomQueueNumber('');
     setCustomConfirming(false);
     setCustomError('');
+  };
+
+  const openCallBack = (container: QueueContainer) => {
+    setSelectedContainerId(container.id);
+    setCallBackTarget(container);
+    setCallBackBusy(false);
+    setCallBackError('');
+  };
+
+  const closeCallBack = () => {
+    if (callBackBusy) return;
+    setCallBackTarget(null);
+    setCallBackError('');
+  };
+
+  const submitCallBack = async (queueNumber: string) => {
+    if (!callBackTarget || callBackBusy) return;
+    setCallBackBusy(true);
+    setBusy(true);
+    setCallBackError('');
+    try {
+      const result = await callBackQueue(callBackTarget.id, queueNumber);
+      const container = result.snapshot.containers.find((item) => item.id === callBackTarget.id);
+      if (container?.activeTicket) {
+        speakQueueCall(container.activeTicket, container, audioOptions);
+      }
+      setSnapshot(result.snapshot);
+      showFeedback('Nomor dilewati berhasil dipanggil kembali');
+      setCallBackTarget(null);
+      await refresh();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Gagal panggil kembali nomor';
+      setCallBackError(message);
+      showFeedback(message, 'warn');
+    } finally {
+      setCallBackBusy(false);
+      setBusy(false);
+    }
   };
 
   const changeCustomQueueNumber = (value: string) => {
@@ -1757,6 +1920,7 @@ export default function QueueDashboardPage() {
         onSelect={setSelectedContainerId}
         onAction={runAction}
         onCustomCall={openCustomCall}
+        onCallBack={openCallBack}
         onPause={runPause}
         onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -1776,6 +1940,7 @@ export default function QueueDashboardPage() {
         onSelect={setSelectedContainerId}
         onAction={runAction}
         onCustomCall={openCustomCall}
+        onCallBack={openCallBack}
         onPause={runPause}
         onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -1794,6 +1959,7 @@ export default function QueueDashboardPage() {
         onSelect={setSelectedContainerId}
         onAction={runAction}
         onCustomCall={openCustomCall}
+        onCallBack={openCallBack}
         onPause={runPause}
         onSpeak={(item) => item.activeTicket && speakQueueCall(item.activeTicket, item, audioOptions)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -1925,6 +2091,16 @@ export default function QueueDashboardPage() {
         onCancel={closeCustomCall}
         onStartConfirm={startCustomConfirm}
         onConfirm={runCustomCall}
+      />
+
+      <CallBackDialog
+        open={Boolean(callBackTarget)}
+        container={callBackTarget}
+        skippedTickets={callBackEligibleTickets}
+        busy={callBackBusy}
+        error={callBackError}
+        onCancel={closeCallBack}
+        onSelect={submitCallBack}
       />
 
       <ResetConfirmDialog

@@ -5,6 +5,7 @@ import { AppError } from '../../lib/errors.js';
 import {
   callNextTicket,
   callCustomTicket,
+  callBackTicket,
   completeTicket,
   createQueueTicket,
   getQueueSnapshot,
@@ -175,6 +176,20 @@ router.post('/containers/:id/custom-call', authenticate, authorize('ADMIN', 'STA
     const actor = req.user?.email ?? req.user?.userId;
     const result = callCustomTicket(getParamId(req), payload.queueNumber, actor);
     if (!result.ticket) throw new AppError(result.error || 'Nomor antrean custom tidak dapat dipanggil', 400);
+    handleAction(result.ticket, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Panggil kembali nomor antrean yang sudah dilewati (SKIPPED).
+// Body schema sama dengan custom-call: { queueNumber }.
+router.post('/containers/:id/call-back', authenticate, authorize('ADMIN', 'STAF_TU'), (req, res, next) => {
+  try {
+    const payload = customCallSchema.parse(req.body);
+    const actor = req.user?.email ?? req.user?.userId;
+    const result = callBackTicket(getParamId(req), payload.queueNumber, actor);
+    if (!result.ticket) throw new AppError(result.error || 'Nomor antrean tidak dapat dipanggil kembali', 400);
     handleAction(result.ticket, res);
   } catch (err) {
     next(err);

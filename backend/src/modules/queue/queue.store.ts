@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 type QueueStatus = 'WAITING' | 'CALLING' | 'SERVING' | 'DONE' | 'SKIPPED';
-type QueueCallType = 'NORMAL' | 'CUSTOM' | 'RECALL';
+type QueueCallType = 'NORMAL' | 'CUSTOM' | 'RECALL' | 'CALLBACK';
 
 export type QueueCallLog = {
   id: string;
@@ -63,7 +63,7 @@ export type QueueTicketInput = {
 
 export type QueueEvent = {
   id: string;
-  type: 'CREATED' | 'CALLED' | 'CUSTOM_CALLED' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
+  type: 'CREATED' | 'CALLED' | 'CUSTOM_CALLED' | 'CALLED_BACK' | 'RECALLED' | 'SKIPPED' | 'DONE' | 'PAUSED' | 'RESUMED' | 'OPENED' | 'CLOSED';
   ticketNumber?: string;
   containerId?: string;
   actor?: string;
@@ -682,6 +682,46 @@ export function callCustomTicket(containerId: string, queueNumber: string, actor
     containerId,
     actor: calledBy,
     message: `${called?.number} dipanggil custom ke ${container.name} oleh ${calledBy}`,
+  });
+  persistQueueState();
+  return { ticket: called, error: null };
+}
+
+// Panggil kembali tiket yang sudah dilewati (status SKIPPED).
+// Operator klik 'Panggil Kembali' di dashboard, pilih satu tiket SKIPPED yg sesuai,
+// → tiket berubah ke CALLING dan dipindah ke container ini.
+export function callBackTicket(containerId: string, queueNumber: string, actor?: string) {
+  const container = containers.find((item) => item.id === containerId);
+  if (!container) return { ticket: null, error: 'Container antrean tidak ditemukan' };
+  if (container.isPaused) return { ticket: null, error: 'Loket sedang pause. Aktifkan loket sebelum panggil kembali.' };
+  if (activeFor(containerId)) return { ticket: null, error: 'Selesaikan atau lewati nomor aktif sebelum panggil kembali nomor lain.' };
+
+  const normalizedNumber = normalizeQueueNumber(queueNumber, container.code);
+  if (!normalizedNumber) return { ticket: null, error: 'Nomor antrean wajib diisi.' };
+
+  const targetTicket = tickets.find((ticket) => normalizeQueueNumber(ticket.number, container.code) === normalizedNumber && ticket.status === 'SKIPPED');
+  if (!targetTicket) {
+    return { ticket: null, error: `Nomor antrean ${normalizedNumber} tidak ditemukan dalam daftar dilewati.` };
+  }
+
+  const calledAt = nowIso();
+  const calledBy = actor?.trim() || container.operator || container.name;
+  const called = updateTicket(targetTicket.id, {
+    containerId,
+    status: 'CALLING',
+    calledAt,
+    calledBy,
+    callType: 'CALLBACK',
+    callLogs: appendCallLog(targetTicket, container, 'CALLBACK', calledAt, calledBy),
+    skippedAt: undefined,
+    finishedAt: undefined,
+  });
+  addEvent({
+    type: 'CALLED_BACK',
+    ticketNumber: called?.number,
+    containerId,
+    actor: calledBy,
+    message: `${called?.number} (sebelumnya dilewati) dipanggil kembali ke ${container.name} oleh ${calledBy}`,
   });
   persistQueueState();
   return { ticket: called, error: null };
