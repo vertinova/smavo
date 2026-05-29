@@ -620,9 +620,13 @@ function WaitingChip({ ticket, highlightVerified }: WaitingChipProps) {
           </div>
           <p className="mt-0.5 truncate text-xs font-semibold text-muted-foreground">{ticket.visitorName}</p>
         </div>
-        {highlightVerified ? (
+        {highlightVerified && ticket.verifiedBy ? (
           <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-black text-emerald-700">
             Verifikasi OK
+          </span>
+        ) : highlightVerified && isAccountCreationServiceChoice(ticket.serviceChoice) ? (
+          <span className="shrink-0 rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] font-black text-rose-700">
+            Pembuatan Akun
           </span>
         ) : null}
       </div>
