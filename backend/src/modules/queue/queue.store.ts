@@ -353,7 +353,8 @@ function waitingFor(containerId: string) {
   const serviceKey = normalizeService(container.service);
   const accountContainerId = getAccountCreationContainer()?.id;
 
-  return todayTickets()
+  // cross-day backlog: pakai semua tiket, bukan hanya hari ini
+  return tickets
     .filter((ticket) => {
       if (ticket.status !== 'WAITING' || normalizeService(ticket.service) !== serviceKey) return false;
       if (!accountContainerId) return true;
@@ -364,7 +365,8 @@ function waitingFor(containerId: string) {
 }
 
 function activeFor(containerId: string) {
-  return todayTickets()
+  // cross-day: tiket CALLING/SERVING dari tanggal manapun ikut tampil
+  return tickets
     .filter((ticket) => ticket.containerId === containerId && ['CALLING', 'SERVING'].includes(ticket.status))
     .sort((a, b) => new Date(b.calledAt ?? b.createdAt).getTime() - new Date(a.calledAt ?? a.createdAt).getTime())[0] ?? null;
 }
@@ -462,13 +464,13 @@ export function getQueueSnapshot(): QueueSnapshot {
       doneCount: done.filter((ticket) => ticket.containerId === container.id).length,
       skippedCount: skipped.filter((ticket) => ticket.containerId === container.id).length,
     })),
-    tickets: allToday.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    tickets: [...tickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     events,
     analytics: {
       totalToday: allToday.length,
-      waiting: allToday.filter((ticket) => ticket.status === 'WAITING').length,
-      calling: allToday.filter((ticket) => ticket.status === 'CALLING').length,
-      serving: allToday.filter((ticket) => ticket.status === 'SERVING').length,
+      waiting: tickets.filter((ticket) => ticket.status === 'WAITING').length,
+      calling: tickets.filter((ticket) => ticket.status === 'CALLING').length,
+      serving: tickets.filter((ticket) => ticket.status === 'SERVING').length,
       done: done.length,
       skipped: skipped.length,
       activeContainers: containers.filter((container) => !container.isPaused).length,
