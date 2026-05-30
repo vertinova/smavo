@@ -98,6 +98,7 @@ type QueueSnapshot = {
   isOfflineMode: boolean;
   offlineSinceIso: string | null;
   generatedAt: string;
+  appVersion: string;
 };
 
 type PersistedQueueState = {
@@ -112,6 +113,10 @@ type PersistedQueueState = {
 
 const accents = ['cyan', 'violet', 'emerald', 'amber', 'rose'];
 const queueStateFile = process.env.QUEUE_STATE_FILE || path.join(process.cwd(), 'data', 'queue-state.json');
+// Versi build saat ini (di-inject sebagai commit SHA ketika image dibangun).
+// Disiarkan ke client lewat snapshot supaya layar yang terbuka tahu kalau ada
+// deploy baru dan bisa menawarkan tombol "Update Sekarang".
+const APP_VERSION = process.env.APP_VERSION || 'dev';
 const QUEUE_SERVICES = {
   verification: 'Verifikasi Berkas',
   information: 'Informasi',
@@ -520,6 +525,7 @@ export function getQueueSnapshot(): QueueSnapshot {
     isOfflineMode,
     offlineSinceIso,
     generatedAt: nowIso(),
+    appVersion: APP_VERSION,
   };
 }
 

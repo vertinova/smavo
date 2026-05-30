@@ -19,6 +19,10 @@ RUN npx prisma generate
 
 RUN mkdir -p uploads
 
+# Versi build (commit SHA) supaya backend bisa menyiarkannya ke client.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 EXPOSE 4000
 
 CMD ["sh", "-c", "npx prisma db push && (npx prisma db seed || echo 'Seed skipped or failed, continuing...') && npx tsx src/server.ts"]

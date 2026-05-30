@@ -21,6 +21,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     container_name: smavo-backend
     restart: unless-stopped
     depends_on:

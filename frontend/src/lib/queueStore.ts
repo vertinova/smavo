@@ -5,6 +5,9 @@ type QueueStore = {
   snapshot: QueueSnapshot;
   connected: boolean;
   lastCalledTicket: string | null;
+  // Deteksi deploy baru: versi build pertama yang dilihat vs versi terkini dari server.
+  loadedVersion: string | null;
+  updateAvailable: boolean;
   setSnapshot: (snapshot: QueueSnapshot) => void;
   refresh: () => Promise<void>;
   connect: () => () => void;
@@ -14,6 +17,8 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   snapshot: emptyQueueSnapshot,
   connected: false,
   lastCalledTicket: null,
+  loadedVersion: null,
+  updateAvailable: false,
   setSnapshot: (snapshot) => {
     const previousActive = get().snapshot.containers
       .map((container) => container.activeTicket?.id)
@@ -23,6 +28,18 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       .map((container) => container.activeTicket?.id)
       .filter(Boolean)
       .join('|');
+
+    // Catat versi build pertama yang dilihat. Kalau server lalu melaporkan versi
+    // berbeda, berarti ada deploy baru → tandai update tersedia.
+    const incomingVersion = snapshot.appVersion;
+    if (incomingVersion && incomingVersion !== 'dev') {
+      const loaded = get().loadedVersion;
+      if (!loaded) {
+        set({ loadedVersion: incomingVersion });
+      } else if (loaded !== incomingVersion && !get().updateAvailable) {
+        set({ updateAvailable: true });
+      }
+    }
 
     set({
       snapshot,

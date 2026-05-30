@@ -20,6 +20,11 @@ if ! run git pull origin main; then
   log "❌ git pull failed"; exit 1
 fi
 
+# Versi build = commit SHA singkat. Dipakai backend (env APP_VERSION) untuk
+# memberi tahu client kalau ada deploy baru → tombol "Update Sekarang".
+export APP_VERSION="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
+log "🏷  APP_VERSION=$APP_VERSION"
+
 if ! run docker compose build; then
   log "❌ docker compose build failed"; exit 1
 fi

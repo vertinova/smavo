@@ -92,6 +92,7 @@ export type QueueSnapshot = {
   isOfflineMode: boolean;
   offlineSinceIso: string | null;
   generatedAt: string;
+  appVersion?: string;
 };
 
 export const emptyQueueSnapshot: QueueSnapshot = {
