@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smavo-v1';
+const CACHE_NAME = 'smavo-v2';
 const STATIC_ASSETS = [
   '/',
   '/login',
