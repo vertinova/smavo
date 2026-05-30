@@ -275,12 +275,21 @@ function migrateAccountCreationTickets() {
 
 migrateAccountCreationTickets();
 
+// Batas "hari" mengikuti zona waktu WIB (UTC+7) — tepat tengah malam waktu
+// Indonesia — tidak bergantung pada zona waktu server. Geser +7 jam lalu baca
+// bagian tanggal/jam dari ISO (yang selalu UTC).
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function wibDateKey(dateIso: string) {
+  return new Date(new Date(dateIso).getTime() + WIB_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function wibHour(dateIso: string) {
+  return new Date(new Date(dateIso).getTime() + WIB_OFFSET_MS).getUTCHours();
+}
+
 function sameDay(dateIso: string) {
-  const input = new Date(dateIso);
-  const now = new Date();
-  return input.getFullYear() === now.getFullYear()
-    && input.getMonth() === now.getMonth()
-    && input.getDate() === now.getDate();
+  return wibDateKey(dateIso) === wibDateKey(new Date().toISOString());
 }
 
 function nowIso() {
@@ -465,7 +474,7 @@ function getHourlyTraffic(allTickets: QueueTicket[]) {
   });
 
   allTickets.forEach((ticket) => {
-    const hour = new Date(ticket.createdAt).getHours();
+    const hour = wibHour(ticket.createdAt);
     const bucket = buckets.find((item) => item.hour.startsWith(String(hour).padStart(2, '0')));
     if (bucket) {
       bucket.total += 1;

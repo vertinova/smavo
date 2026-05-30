@@ -250,25 +250,14 @@ function makeSpokenQueueNumber(number: string) {
   return suffix ? `${prefix}, ${suffix}` : prefix;
 }
 
-function spokenRegistrationDate(value?: string) {
-  if (!value) return '';
-  try {
-    return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long' }).format(new Date(value));
-  } catch {
-    return '';
-  }
-}
-
 function makeQueueCallText(ticket: QueueTicket, container: QueueContainer, style: QueueVoiceStyle) {
   const number = makeSpokenQueueNumber(ticket.number);
   const destination = container.name;
-  const regDate = spokenRegistrationDate(ticket.createdAt);
-  const dateClause = regDate ? `, daftar tanggal ${regDate}` : '';
 
-  if (style === 'singkat') return `Nomor ${number}${dateClause}, ke ${destination}.`;
-  if (style === 'formal') return `Mohon perhatian. Nomor antrean ${number}${dateClause}, dipersilakan menuju ${destination}. Terima kasih.`;
-  if (style === 'bank') return `Nomor antrean. ${number}.${regDate ? ` Tanggal daftar ${regDate}.` : ''} Silakan menuju ${destination}.`;
-  return `Perhatian. Nomor ${number}${dateClause}. Yuk, silakan menuju ${destination} sekarang. Terima kasih.`;
+  if (style === 'singkat') return `Nomor ${number}, ke ${destination}.`;
+  if (style === 'formal') return `Mohon perhatian. Nomor antrean ${number}, dipersilakan menuju ${destination}. Terima kasih.`;
+  if (style === 'bank') return `Nomor antrean. ${number}. Silakan menuju ${destination}.`;
+  return `Perhatian. Nomor ${number}. Yuk, silakan menuju ${destination} sekarang. Terima kasih.`;
 }
 
 function getVoiceTuning(style: QueueVoiceStyle) {
